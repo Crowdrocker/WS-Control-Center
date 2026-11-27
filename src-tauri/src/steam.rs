@@ -5,6 +5,7 @@ use serde::Serialize;
 pub struct SteamScanResult {
     pub steam_detected: bool,
     pub libraries_scanned: usize,
+    pub library_paths: Vec<String>,
     pub games: Vec<SteamGame>,
     pub issues: Vec<String>,
 }
@@ -194,6 +195,7 @@ fn scan_steam_home(home: &std::path::Path) -> Result<SteamScanResult, String> {
 
     let mut games_by_id = std::collections::HashMap::new();
     let mut libraries_scanned = 0;
+    let mut scanned_library_paths = Vec::new();
 
     for library in &libraries {
         let steamapps = library.join("steamapps");
@@ -212,6 +214,7 @@ fn scan_steam_home(home: &std::path::Path) -> Result<SteamScanResult, String> {
             }
         };
         libraries_scanned += 1;
+        scanned_library_paths.push(library.display().to_string());
 
         for entry in entries {
             let entry = match entry {
@@ -316,6 +319,7 @@ fn scan_steam_home(home: &std::path::Path) -> Result<SteamScanResult, String> {
     Ok(SteamScanResult {
         steam_detected,
         libraries_scanned,
+        library_paths: scanned_library_paths,
         games,
         issues,
     })
@@ -564,6 +568,7 @@ mod tests {
 
         assert!(scan.steam_detected);
         assert_eq!(scan.libraries_scanned, 2);
+        assert_eq!(scan.library_paths.len(), 2);
         assert_eq!(scan.games.len(), 2);
         assert_eq!(scan.games[0].name, "Alpha");
         assert_eq!(scan.games[1].name, "Beta");

@@ -220,6 +220,43 @@ button { color: inherit; }
 .steam-issues summary { display: flex; align-items: center; gap: 7px; padding: 11px 1px 4px; cursor: pointer; list-style: none; }
 .steam-issues summary::-webkit-details-marker { display: none; }
 .steam-issues ul { display: grid; gap: 6px; margin: 8px 0 1px; padding-left: 22px; color: #9c8b7c; font-size: 8px; line-height: 1.5; }
+.mo2-workspace { display: grid; gap: 12px; }
+.mo2-intro-panel, .mo2-path-panel, .mo2-report { overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: rgba(15, 21, 28, .9); }
+.mo2-intro-panel { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px; }
+.mo2-intro-copy h2, .mo2-report h2 { margin: 7px 0 6px; color: #e4ebee; font: 500 17px var(--display); }
+.mo2-intro-copy p { margin: 0; color: #85949c; font-size: 10px; line-height: 1.55; }
+.mo2-safety-note { display: flex; align-items: center; gap: 6px; margin-top: 11px; color: #81c9ba; font: 8px var(--mono); letter-spacing: .02em; }
+.mo2-check-button { display: flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 0 12px; border: 1px solid rgba(56,216,231,.34); border-radius: 4px; background: rgba(56,216,231,.07); color: #a7e8eb; font: 8px var(--mono); letter-spacing: .06em; cursor: pointer; transition: .18s ease; }
+.mo2-check-button:hover:not(:disabled) { border-color: rgba(56,216,231,.65); background: rgba(56,216,231,.14); }
+.mo2-check-button:disabled { opacity: .46; cursor: not-allowed; }
+.mo2-path-panel { padding: 14px 17px; }
+.mo2-path-panel label { display: grid; gap: 7px; color: #84929b; font: 8px var(--mono); letter-spacing: .06em; }
+.mo2-path-panel input { height: 34px; padding: 0 10px; border: 1px solid rgba(167,193,212,.13); border-radius: 4px; outline: 0; background: rgba(6,10,14,.55); color: #e3eaed; font: 10px var(--mono); }
+.mo2-path-panel input:focus { border-color: rgba(56,216,231,.42); box-shadow: 0 0 0 2px rgba(56,216,231,.07); }
+.mo2-path-panel input::placeholder { color: #5f6e77; }
+.mo2-path-panel input:disabled { opacity: .5; }
+.mo2-path-panel p { margin: 7px 0 0; color: #6f7e87; font-size: 9px; }
+.mo2-report { padding: 16px 17px; }
+.mo2-report .launcher-list-heading { margin-bottom: 12px; }
+.mo2-check-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr)); gap: 8px; }
+.mo2-check-card { min-width: 0; padding: 12px; border: 1px solid rgba(167,193,212,.1); border-radius: 4px; background: rgba(255,255,255,.018); }
+.mo2-check-top { display: flex; align-items: center; gap: 7px; color: #8d9ba4; font: 7px var(--mono); letter-spacing: .06em; }
+.mo2-check-indicator { width: 6px; height: 6px; border-radius: 50%; background: #9b7780; }
+.check-found .mo2-check-top { color: #83cbbb; }
+.check-found .mo2-check-indicator { background: #64d9bb; box-shadow: 0 0 7px rgba(100,217,187,.46); }
+.check-missing .mo2-check-top { color: #d29d76; }
+.check-missing .mo2-check-indicator { background: var(--orange); box-shadow: 0 0 7px rgba(255,154,76,.35); }
+.check-optional .mo2-check-top { color: #8d9ba4; }
+.check-optional .mo2-check-indicator { background: #74828b; }
+.check-not-checked .mo2-check-indicator { background: #74828b; }
+.mo2-check-card h3 { margin: 8px 0 5px; color: #dce5e9; font: 500 11px var(--display); }
+.mo2-check-card p { margin: 0; color: #82919a; font-size: 9px; line-height: 1.5; overflow-wrap: anywhere; }
+.proton-tool-list { margin-top: 15px; }
+.proton-tool-list > div:last-child { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+.proton-tool-list > div:last-child span { padding: 5px 7px; border: 1px solid rgba(56,216,231,.17); border-radius: 3px; background: rgba(56,216,231,.045); color: #a2dadd; font: 8px var(--mono); }
+.mo2-guidance { margin-top: 15px; padding: 13px 14px; border: 1px solid rgba(173,138,255,.14); border-radius: 4px; background: rgba(173,138,255,.025); }
+.mo2-guidance ol { display: grid; gap: 8px; margin: 10px 0 0; padding-left: 18px; color: #98a4ab; font-size: 9px; line-height: 1.55; }
+.mo2-guidance li::marker { color: var(--violet); font-family: var(--mono); }
 .launcher-workspace { display: grid; gap: 13px; }
 .launcher-add-panel, .launcher-list-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: rgba(15, 21, 28, .9); }
 .launcher-add-panel { padding: 17px 19px 18px; }
@@ -284,6 +321,7 @@ button { color: inherit; }
   .strip-item { margin-left: 12px; }
   .steam-results-bar { flex-wrap: wrap; gap: 11px; padding: 10px 0; }
   .game-filter { width: 100%; margin-left: 0; border-top: 1px solid var(--line); }
+  .mo2-intro-panel { align-items: flex-start; flex-direction: column; }
 }
 @media (max-width: 900px) {
   body { min-width: 620px; }
