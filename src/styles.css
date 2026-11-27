@@ -121,6 +121,8 @@ button { color: inherit; }
 .module-index { color: #667580; font: 9px var(--mono); }
 .module-status { display: flex; align-items: center; gap: 5px; color: #87949b; font: 7px var(--mono); letter-spacing: .05em; }
 .module-status span, .planned-badge span { width: 5px; height: 5px; border-radius: 50%; background: #b17a4f; box-shadow: 0 0 7px rgba(255,154,76,.4); }
+.module-status-ready { color: #86c9bd; }
+.module-status-ready span { background: #64d9bb; box-shadow: 0 0 7px rgba(100,217,187,.5); }
 .module-icon { display: grid; width: 34px; height: 34px; place-items: center; margin: 12px 0 10px; border: 1px solid color-mix(in srgb, var(--module-accent) 28%, transparent); border-radius: 5px; background: color-mix(in srgb, var(--module-accent) 7%, transparent); color: var(--module-accent); }
 .module-eyebrow { color: #75848f; font: 7px var(--mono); letter-spacing: .11em; }
 .module-card h3 { margin: 5px 0 5px; color: #e2e9ed; font: 500 13px var(--display); }
@@ -162,6 +164,8 @@ button { color: inherit; }
 .module-view-heading h1 { margin: 0; font: 500 28px var(--display); letter-spacing: -.04em; }
 .module-view-heading p { margin: 6px 0 0; color: #8b9aa3; font-size: 12px; }
 .planned-badge { display: flex; align-items: center; gap: 7px; margin-left: auto; padding: 8px 10px; border: 1px solid rgba(255,154,76,.18); border-radius: 3px; color: #c5916c; font: 8px var(--mono); letter-spacing: .07em; }
+.planned-badge.readonly-badge { border-color: rgba(56,216,231,.18); color: #8ed6d4; }
+.planned-badge.readonly-badge span { background: var(--cyan); box-shadow: 0 0 7px rgba(56,216,231,.45); }
 .module-placeholder { position: relative; display: grid; min-height: 300px; overflow: hidden; place-items: center; border: 1px solid var(--line); border-radius: 6px; background: radial-gradient(ellipse at center, rgba(56,216,231,.055), transparent 48%), #0e141a; }
 .placeholder-grid { opacity: .13; mask-image: radial-gradient(ellipse, black, transparent 75%); }
 .placeholder-orbit { position: absolute; width: 185px; height: 185px; border: 1px solid rgba(56,216,231,.18); border-radius: 50%; }
@@ -212,6 +216,50 @@ button { color: inherit; }
 .steam-issues summary { display: flex; align-items: center; gap: 7px; padding: 11px 1px 4px; cursor: pointer; list-style: none; }
 .steam-issues summary::-webkit-details-marker { display: none; }
 .steam-issues ul { display: grid; gap: 6px; margin: 8px 0 1px; padding-left: 22px; color: #9c8b7c; font-size: 8px; line-height: 1.5; }
+.launcher-workspace { display: grid; gap: 13px; }
+.launcher-add-panel, .launcher-list-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: rgba(15, 21, 28, .9); }
+.launcher-add-panel { padding: 17px 19px 18px; }
+.launcher-panel-heading, .launcher-list-heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 15px; }
+.launcher-panel-heading h2, .launcher-list-heading h2 { margin: 6px 0 5px; color: #e4ebee; font: 500 16px var(--display); }
+.launcher-panel-heading p { max-width: 520px; margin: 0; color: #85949c; font-size: 10px; line-height: 1.55; }
+.launcher-add-icon { display: grid; width: 35px; height: 35px; flex: 0 0 35px; place-items: center; border: 1px solid rgba(173,138,255,.24); border-radius: 5px; background: rgba(173,138,255,.07); color: var(--violet); }
+.launcher-add-form { display: grid; grid-template-columns: minmax(150px, .75fr) minmax(240px, 1.5fr) auto; align-items: end; gap: 11px; margin-top: 16px; }
+.launcher-add-form label { display: grid; min-width: 0; gap: 6px; color: #85949c; font: 8px var(--mono); letter-spacing: .06em; }
+.launcher-add-form input { width: 100%; min-width: 0; height: 35px; padding: 0 10px; border: 1px solid rgba(167,193,212,.13); border-radius: 4px; outline: 0; background: rgba(6,10,14,.55); color: #e3eaed; font: 10px var(--mono); }
+.launcher-add-form input:focus { border-color: rgba(173,138,255,.48); box-shadow: 0 0 0 2px rgba(173,138,255,.08); }
+.launcher-add-form input::placeholder { color: #5f6e77; }
+.launcher-add-form input:disabled { opacity: .5; }
+.launcher-save-button, .launcher-run-button, .launcher-cancel-button { display: flex; align-items: center; justify-content: center; gap: 7px; min-height: 35px; padding: 0 11px; border: 1px solid rgba(173,138,255,.32); border-radius: 4px; background: rgba(173,138,255,.08); color: #d3c4ff; font: 8px var(--mono); letter-spacing: .04em; cursor: pointer; transition: .18s ease; white-space: nowrap; }
+.launcher-save-button:hover:not(:disabled) { border-color: rgba(173,138,255,.65); background: rgba(173,138,255,.16); }
+.launcher-save-button:disabled, .launcher-run-button:disabled, .launcher-cancel-button:disabled, .launcher-remove-button:disabled { opacity: .48; cursor: not-allowed; }
+.launcher-list-panel { padding: 16px 17px; }
+.launcher-list-heading { align-items: center; margin-bottom: 12px; }
+.launcher-list-heading h2 { margin-bottom: 0; }
+.launcher-count { padding: 6px 7px; border: 1px solid var(--line); border-radius: 3px; color: #91a0a9; font: 8px var(--mono); letter-spacing: .06em; }
+.launcher-empty { display: flex; min-height: 92px; align-items: center; justify-content: center; gap: 10px; border: 1px dashed rgba(167,193,212,.12); border-radius: 4px; color: #87959e; font-size: 10px; }
+.launcher-empty svg { flex: 0 0 auto; color: #9e88d4; }
+.launcher-app-list { display: grid; gap: 7px; }
+.launcher-app-card { display: flex; min-width: 0; align-items: center; gap: 10px; padding: 9px 10px; border: 1px solid rgba(167,193,212,.09); border-radius: 4px; background: rgba(255,255,255,.018); }
+.launcher-app-icon { display: grid; width: 34px; height: 34px; flex: 0 0 34px; place-items: center; border: 1px solid rgba(173,138,255,.2); border-radius: 4px; background: rgba(173,138,255,.05); color: var(--violet); }
+.launcher-app-details { min-width: 0; flex: 1; }
+.launcher-app-details h3 { margin: 0 0 4px; color: #e1e9ed; font: 500 11px var(--display); }
+.launcher-app-details code { display: block; overflow: hidden; color: #788892; font: 8px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.launcher-run-button { border-color: rgba(56,216,231,.28); background: rgba(56,216,231,.07); color: #a7e8eb; }
+.launcher-run-button:hover:not(:disabled) { border-color: rgba(56,216,231,.65); background: rgba(56,216,231,.15); }
+.launcher-remove-button { display: grid; width: 31px; height: 31px; flex: 0 0 31px; place-items: center; border: 1px solid transparent; border-radius: 4px; background: transparent; color: #85919a; cursor: pointer; }
+.launcher-remove-button:hover:not(:disabled) { border-color: rgba(255,113,113,.22); background: rgba(255,113,113,.07); color: #ff9a9a; }
+.launcher-notice { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid rgba(100,217,187,.17); border-radius: 4px; background: rgba(100,217,187,.045); color: #83cbbb; font-size: 10px; }
+.launcher-notice svg { flex: 0 0 auto; }
+.launcher-dialog-backdrop { position: fixed; z-index: 30; inset: 0; display: grid; place-items: center; padding: 24px; background: rgba(3,6,9,.78); backdrop-filter: blur(7px); }
+.launcher-dialog { width: min(460px, 100%); padding: 22px; border: 1px solid rgba(56,216,231,.24); border-radius: 7px; background: #10171e; box-shadow: 0 18px 70px rgba(0,0,0,.5); }
+.launcher-dialog h2 { margin: 8px 0; color: #e7eef1; font: 500 20px var(--display); }
+.launcher-dialog > p { margin: 0 0 13px; color: #94a1a8; font-size: 10px; line-height: 1.55; }
+.launcher-dialog > code { display: block; overflow: hidden; padding: 9px 10px; border: 1px solid var(--line); border-radius: 4px; background: rgba(0,0,0,.25); color: #9eabb3; font: 9px var(--mono); text-overflow: ellipsis; white-space: nowrap; }
+.launcher-dialog .steam-error { margin: 12px 0 0; }
+.launcher-dialog-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 17px; }
+.launcher-cancel-button { border-color: rgba(167,193,212,.16); background: transparent; color: #9aa8b0; }
+.launcher-cancel-button:hover:not(:disabled) { border-color: rgba(167,193,212,.35); background: rgba(255,255,255,.04); }
+.launcher-dialog .launcher-run-button { min-width: 135px; }
 .back-button { display: flex; align-items: center; gap: 7px; margin-top: 19px; padding: 0; border: 0; background: transparent; color: #94a1a8; font: 8px var(--mono); letter-spacing: .08em; cursor: pointer; }
 .back-button svg { color: var(--cyan); transform: rotate(180deg); }
 .back-button:hover { color: #e0e9ed; }

@@ -15,6 +15,8 @@ Create a production frontend build with `npm run build`, or package the desktop 
 
 ## Current scope
 
-The Steam library module can scan standard Linux Steam locations and their configured libraries when requested. It reads installed app manifests only; it does not launch games or modify files. The other sections are UI placeholders and are not connected to system services.
+The Steam library module can scan standard Linux Steam locations and their configured libraries when requested. It reads installed app manifests only and does not launch games or modify files.
 
-Run the focused Rust parser tests with `cargo test --manifest-path src-tauri/Cargo.toml`.
+The app launcher stores user-added executable paths in the app's local configuration directory. It validates each path and only starts an app after an explicit confirmation, invoking the selected executable directly without a shell or custom arguments. The other sections are UI placeholders and are not connected to system services.
+
+Run the focused Rust tests with `cargo test --manifest-path src-tauri/Cargo.toml`.
