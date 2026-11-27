@@ -90,7 +90,7 @@ const modules: ModuleInfo[] = [
     id: "dotfile-sync",
     name: "Dotfile sync",
     eyebrow: "GITHUB / BACKUP",
-    description: "Keep workstation configuration in sync with GitHub.",
+    description: "Back up selected home-directory files to GitHub.",
     icon: Github,
     accent: "orange",
   },
@@ -375,9 +375,9 @@ function ModuleCard({
     <button className={`module-card accent-${module.accent}`} onClick={onClick}>
       <div className="module-card-top">
         <span className="module-index">0{index}</span>
-        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" ? "module-status-ready" : ""}`}>
+        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" || module.id === "dotfile-sync" ? "module-status-ready" : ""}`}>
           <span />
-          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : module.id === "mod-organizer" ? "CHECKS" : module.id === "voice-control" ? "LOCAL" : "PLANNED"}
+          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : module.id === "mod-organizer" ? "CHECKS" : module.id === "voice-control" ? "LOCAL" : module.id === "dotfile-sync" ? "BACKUP" : "PLANNED"}
         </span>
       </div>
       <div className="module-icon"><Icon size={19} strokeWidth={1.7} /></div>
@@ -402,9 +402,9 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
           <h1>{module.name}</h1>
           <p>{module.description}</p>
         </div>
-        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" ? "readonly-badge" : ""}`}>
+        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" || module.id === "dotfile-sync" ? "readonly-badge" : ""}`}>
           <span />
-          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : module.id === "mod-organizer" ? "READ-ONLY CHECKS" : module.id === "voice-control" ? "LOCAL OLLAMA" : "PLANNED"}
+          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : module.id === "mod-organizer" ? "READ-ONLY CHECKS" : module.id === "voice-control" ? "LOCAL OLLAMA" : module.id === "dotfile-sync" ? "CONFIRM BEFORE BACKUP" : "PLANNED"}
         </span>
       </div>
       {module.id === "mod-organizer" ? (
@@ -415,6 +415,8 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
         <AppLauncher />
       ) : module.id === "voice-control" ? (
         <OllamaChat />
+      ) : module.id === "dotfile-sync" ? (
+        <DotfileSync />
       ) : (
         <>
           <div className="module-placeholder">
@@ -954,6 +956,335 @@ function OllamaChat() {
       </div>
     </section>
   );
+}
+
+type DotfileEntry = {
+  relativePath: string;
+  exists: boolean;
+  sizeBytes: number | null;
+};
+
+type DotfileSettings = {
+  repository: string;
+  files: DotfileEntry[];
+};
+
+type BackupFile = {
+  sourcePath: string;
+  targetPath: string;
+  sizeBytes: number;
+};
+
+type BackupPreview = {
+  repository: string;
+  defaultBranch: string;
+  githubUser: string;
+  isPrivate: boolean;
+  files: BackupFile[];
+};
+
+type BackupResult = {
+  repository: string;
+  branch: string;
+  commitSha: string;
+  filesBackedUp: number;
+};
+
+function DotfileSync() {
+  const [settings, setSettings] = useState<DotfileSettings>({ repository: "", files: [] });
+  const [repository, setRepository] = useState("");
+  const [filePath, setFilePath] = useState("");
+  const [preview, setPreview] = useState<BackupPreview | null>(null);
+  const [backupResult, setBackupResult] = useState<BackupResult | null>(null);
+  const [confirmedContents, setConfirmedContents] = useState(false);
+  const [confirmedPublicRepo, setConfirmedPublicRepo] = useState(false);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [addingFile, setAddingFile] = useState(false);
+  const [reviewing, setReviewing] = useState(false);
+  const [backingUp, setBackingUp] = useState(false);
+  const [removingFile, setRemovingFile] = useState<string | null>(null);
+  const desktopAvailable = isControlCenterDesktop();
+  const configBusy = addingFile || reviewing || backingUp || removingFile !== null;
+
+  useEffect(() => {
+    if (!desktopAvailable) {
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    invoke<DotfileSettings>("get_dotfile_settings")
+      .then((loaded) => {
+        if (!active) return;
+        setSettings(loaded);
+        setRepository(loaded.repository);
+      })
+      .catch((reason: unknown) => {
+        if (active) setLoadError(reason instanceof Error ? reason.message : String(reason));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [desktopAvailable]);
+
+  const invalidateReview = () => {
+    setPreview(null);
+    setBackupResult(null);
+    setConfirmedContents(false);
+    setConfirmedPublicRepo(false);
+    setNotice(null);
+  };
+
+  const handleAddFile = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setAddingFile(true);
+    setError(null);
+    invalidateReview();
+    try {
+      const updated = await invoke<DotfileSettings>("add_dotfile_to_backup", { path: filePath });
+      setSettings(updated);
+      setFilePath("");
+      setNotice("File added to the local backup allowlist.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setAddingFile(false);
+    }
+  };
+
+  const handleRemoveFile = async (entry: DotfileEntry) => {
+    setRemovingFile(entry.relativePath);
+    setError(null);
+    invalidateReview();
+    try {
+      setSettings(await invoke<DotfileSettings>("remove_dotfile_from_backup", {
+        relativePath: entry.relativePath,
+      }));
+      setNotice("File removed from the local backup allowlist.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setRemovingFile(null);
+    }
+  };
+
+  const reviewBackup = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setReviewing(true);
+    setError(null);
+    setNotice(null);
+    setPreview(null);
+    setBackupResult(null);
+    setConfirmedContents(false);
+    setConfirmedPublicRepo(false);
+    try {
+      const saved = await invoke<DotfileSettings>("save_dotfile_repository", { repository });
+      setSettings(saved);
+      setRepository(saved.repository);
+      setPreview(await invoke<BackupPreview>("preview_dotfile_backup"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setReviewing(false);
+    }
+  };
+
+  const confirmBackup = async () => {
+    if (!preview || !confirmedContents || (!preview.isPrivate && !confirmedPublicRepo)) return;
+    setBackingUp(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const result = await invoke<BackupResult>("backup_dotfiles", {
+        allowPublicRepository: confirmedPublicRepo,
+      });
+      setBackupResult(result);
+      setNotice(`Backed up ${result.filesBackedUp} selected file(s) in commit ${result.commitSha.slice(0, 7)}.`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setBackingUp(false);
+    }
+  };
+
+  return (
+    <section className="dotfile-workspace" aria-label="GitHub dotfile backup">
+      <div className="dotfile-config-panel">
+        <div className="launcher-panel-heading">
+          <div>
+            <div className="section-overline">ALLOWLISTED FILES / BACKUP ONLY</div>
+            <h2>Choose a private or reviewed GitHub repository</h2>
+            <p>Uses your signed-in GitHub CLI and writes one commit to an existing repository's default branch. Only files you add below are included; the app never scans your home directory.</p>
+          </div>
+          <div className="launcher-add-icon"><Github size={18} /></div>
+        </div>
+
+        <form className="dotfile-repository-form" onSubmit={reviewBackup}>
+          <label>
+            <span>GITHUB REPOSITORY</span>
+            <input
+              value={repository}
+              onChange={(event) => {
+                setRepository(event.target.value);
+                invalidateReview();
+              }}
+              placeholder="owner/dotfiles"
+              maxLength={200}
+              required
+              disabled={!desktopAvailable || configBusy}
+            />
+          </label>
+          <button className="dotfile-review-button" type="submit" disabled={!desktopAvailable || configBusy || settings.files.length === 0}>
+            {reviewing ? <LoaderCircle size={14} className="spin" /> : <RefreshCw size={14} />}
+            {reviewing ? "CHECKING..." : "REVIEW BACKUP"}
+          </button>
+        </form>
+
+        <form className="dotfile-add-form" onSubmit={handleAddFile}>
+          <label>
+            <span>ADD A FILE INSIDE YOUR HOME DIRECTORY</span>
+            <input
+              value={filePath}
+              onChange={(event) => setFilePath(event.target.value)}
+              placeholder="/home/you/.config/example/config"
+              autoComplete="off"
+              required
+              disabled={!desktopAvailable || configBusy}
+            />
+          </label>
+          <button className="dotfile-add-button" type="submit" disabled={!desktopAvailable || configBusy}>
+            {addingFile ? <LoaderCircle size={14} className="spin" /> : <Plus size={14} />}
+            {addingFile ? "ADDING..." : "ADD FILE"}
+          </button>
+        </form>
+
+        <div className="dotfile-safety-note">
+          <ShieldCheck size={13} />
+          Only paths under your home directory are accepted (8 MB per file, 24 MB total). No secret scanning is performed; review file contents yourself before backup.
+        </div>
+        {!desktopAvailable && (
+          <div className="steam-notice">
+            <AlertTriangle size={15} />
+            <span>Dotfile backup is available in the Tauri desktop app. Start it with <code>npm run tauri dev</code>.</span>
+          </div>
+        )}
+      </div>
+
+      {loadError && <div className="steam-error" role="alert"><AlertTriangle size={15} />{loadError}</div>}
+      {error && <div className="steam-error" role="alert"><AlertTriangle size={15} />{error}</div>}
+      {notice && <div className="launcher-notice" role="status"><CheckCircle2 size={15} />{notice}</div>}
+
+      <div className="dotfile-list-panel">
+        <div className="launcher-list-heading">
+          <div>
+            <div className="section-overline">LOCAL ALLOWLIST</div>
+            <h2>Selected files</h2>
+          </div>
+          <span className="launcher-count">{String(settings.files.length).padStart(2, "0")} FILES</span>
+        </div>
+        {loading ? (
+          <div className="launcher-empty"><LoaderCircle size={17} className="spin" /> Loading backup settings...</div>
+        ) : !desktopAvailable ? (
+          <div className="launcher-empty"><AlertTriangle size={17} /> Open the Tauri desktop app to manage the backup list.</div>
+        ) : loadError ? (
+          <div className="launcher-empty"><AlertTriangle size={17} /> Backup settings could not be loaded. Resolve the error and reopen this module.</div>
+        ) : settings.files.length === 0 ? (
+          <div className="launcher-empty"><Github size={18} /> Add specific dotfiles above. No directory scan is performed.</div>
+        ) : (
+          <div className="dotfile-list">
+            {settings.files.map((entry) => (
+              <article className="dotfile-list-item" key={entry.relativePath}>
+                <div className={`dotfile-file-status ${entry.exists ? "ready" : ""}`}><span />{entry.exists ? "READY" : "MISSING"}</div>
+                <div className="dotfile-file-details">
+                  <code title={entry.relativePath}>{entry.relativePath}</code>
+                  <small>{entry.exists && entry.sizeBytes !== null ? `${formatBytes(entry.sizeBytes)} · saved path inside home directory` : "File not available; it cannot be backed up."}</small>
+                </div>
+                <button
+                  className="launcher-remove-button"
+                  type="button"
+                  disabled={configBusy}
+                  aria-label={`Remove ${entry.relativePath} from backup list`}
+                  title="Remove from backup list"
+                  onClick={() => handleRemoveFile(entry)}
+                >
+                  {removingFile === entry.relativePath ? <LoaderCircle size={14} className="spin" /> : <Trash2 size={14} />}
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {preview && (
+        <div className="dotfile-review-panel">
+          <div className="launcher-list-heading">
+            <div>
+              <div className="section-overline">REVIEW BEFORE WRITING</div>
+              <h2>Backup plan</h2>
+            </div>
+            <span className={`dotfile-visibility ${preview.isPrivate ? "private" : "public"}`}>
+              {preview.isPrivate ? "PRIVATE REPOSITORY" : "PUBLIC REPOSITORY"}
+            </span>
+          </div>
+          <div className="dotfile-review-meta">
+            <span>DESTINATION <strong>{preview.repository}</strong></span>
+            <span>BRANCH <strong>{preview.defaultBranch}</strong></span>
+            <span>GITHUB ACCOUNT <strong>{preview.githubUser}</strong></span>
+          </div>
+          <div className="dotfile-review-files">
+            {preview.files.map((file) => (
+              <div className="dotfile-review-file" key={file.targetPath}>
+                <code>{file.targetPath}</code>
+                <span>{formatBytes(file.sizeBytes)} · create or replace</span>
+              </div>
+            ))}
+          </div>
+          <label className="dotfile-confirmation">
+            <input
+              type="checkbox"
+              checked={confirmedContents}
+              onChange={(event) => setConfirmedContents(event.target.checked)}
+              disabled={backingUp}
+            />
+            <span>I reviewed these files and understand the current contents will be committed to this repository.</span>
+          </label>
+          {!preview.isPrivate && (
+            <label className="dotfile-confirmation public-warning">
+              <input
+                type="checkbox"
+                checked={confirmedPublicRepo}
+                onChange={(event) => setConfirmedPublicRepo(event.target.checked)}
+                disabled={backingUp}
+              />
+              <span>This repository is public. I understand anyone may view these backed-up files.</span>
+            </label>
+          )}
+          <button
+            className="dotfile-backup-button"
+            type="button"
+            onClick={confirmBackup}
+            disabled={!confirmedContents || (!preview.isPrivate && !confirmedPublicRepo) || backingUp || backupResult !== null}
+          >
+            {backingUp ? <LoaderCircle size={14} className="spin" /> : <Github size={14} />}
+            {backingUp ? "BACKING UP..." : backupResult ? "BACKUP COMPLETE" : "COMMIT SELECTED FILES"}
+          </button>
+        </div>
+      )}
+    </section>
+  );
+}
+
+function formatBytes(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 type LauncherApp = {
