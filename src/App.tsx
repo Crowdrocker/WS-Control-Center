@@ -98,7 +98,7 @@ const modules: ModuleInfo[] = [
     id: "system-tools",
     name: "System tools",
     eyebrow: "LINUX / SHORTCUTS",
-    description: "Convenient entry points for routine system maintenance.",
+    description: "Review local Linux system status with read-only checks.",
     icon: Cpu,
     accent: "violet",
   },
@@ -375,9 +375,9 @@ function ModuleCard({
     <button className={`module-card accent-${module.accent}`} onClick={onClick}>
       <div className="module-card-top">
         <span className="module-index">0{index}</span>
-        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" || module.id === "dotfile-sync" || module.id === "obs" ? "module-status-ready" : ""}`}>
+        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" || module.id === "dotfile-sync" || module.id === "system-tools" || module.id === "obs" ? "module-status-ready" : ""}`}>
           <span />
-          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : module.id === "mod-organizer" ? "CHECKS" : module.id === "voice-control" ? "LOCAL" : module.id === "dotfile-sync" ? "BACKUP" : module.id === "obs" ? "READ ONLY" : "PLANNED"}
+          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : module.id === "mod-organizer" ? "CHECKS" : module.id === "voice-control" ? "LOCAL" : module.id === "dotfile-sync" ? "BACKUP" : module.id === "system-tools" || module.id === "obs" ? "READ ONLY" : "PLANNED"}
         </span>
       </div>
       <div className="module-icon"><Icon size={19} strokeWidth={1.7} /></div>
@@ -402,9 +402,9 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
           <h1>{module.name}</h1>
           <p>{module.description}</p>
         </div>
-        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" || module.id === "dotfile-sync" || module.id === "obs" ? "readonly-badge" : ""}`}>
+        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" || module.id === "dotfile-sync" || module.id === "system-tools" || module.id === "obs" ? "readonly-badge" : ""}`}>
           <span />
-          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : module.id === "mod-organizer" ? "READ-ONLY CHECKS" : module.id === "voice-control" ? "LOCAL OLLAMA" : module.id === "dotfile-sync" ? "CONFIRM BEFORE BACKUP" : module.id === "obs" ? "LOCAL / READ ONLY" : "PLANNED"}
+          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : module.id === "mod-organizer" ? "READ-ONLY CHECKS" : module.id === "voice-control" ? "LOCAL OLLAMA" : module.id === "dotfile-sync" ? "CONFIRM BEFORE BACKUP" : module.id === "system-tools" || module.id === "obs" ? "LOCAL / READ ONLY" : "PLANNED"}
         </span>
       </div>
       {module.id === "mod-organizer" ? (
@@ -417,6 +417,8 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
         <OllamaChat />
       ) : module.id === "dotfile-sync" ? (
         <DotfileSync />
+      ) : module.id === "system-tools" ? (
+        <SystemMonitor />
       ) : module.id === "obs" ? (
         <ObsMonitor />
       ) : (
@@ -1105,6 +1107,111 @@ function ObsMonitor() {
             )}
           </>
         )}
+      </div>
+    </section>
+  );
+}
+
+type SystemStatus = {
+  osName: string;
+  kernel: string;
+  architecture: string;
+  processor: string;
+  logicalCores: number;
+  memoryTotalBytes: number;
+  memoryAvailableBytes: number;
+  uptimeSeconds: number;
+};
+
+function formatSystemBytes(bytes: number) {
+  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
+  let value = bytes;
+  let unitIndex = 0;
+  while (value >= 1024 && unitIndex < units.length - 1) {
+    value /= 1024;
+    unitIndex += 1;
+  }
+  return `${value.toFixed(value >= 10 || unitIndex === 0 ? 0 : 1)} ${units[unitIndex]}`;
+}
+
+function formatUptime(seconds: number) {
+  const days = Math.floor(seconds / 86_400);
+  const hours = Math.floor((seconds % 86_400) / 3_600);
+  const minutes = Math.floor((seconds % 3_600) / 60);
+  return days > 0 ? `${days}d ${hours}h ${minutes}m` : `${hours}h ${minutes}m`;
+}
+
+function SystemMonitor() {
+  const [report, setReport] = useState<SystemStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const desktopAvailable = isControlCenterDesktop();
+
+  const refresh = async () => {
+    setLoading(true);
+    setError(null);
+    setReport(null);
+    try {
+      setReport(await invoke<SystemStatus>("read_system_status"));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const memoryUsedPercent = report
+    ? Math.round(((report.memoryTotalBytes - report.memoryAvailableBytes) / report.memoryTotalBytes) * 100)
+    : 0;
+
+  return (
+    <section className="system-workspace" aria-label="Local Linux system status">
+      <div className="system-status-panel">
+        <div className="launcher-panel-heading">
+          <div>
+            <div className="section-overline">LOCAL TELEMETRY / READ-ONLY</div>
+            <h2>System overview</h2>
+            <p>Inspect basic Linux hardware and runtime status. This check does not run maintenance commands or change system settings.</p>
+          </div>
+          <button className="system-refresh-button" type="button" onClick={refresh} disabled={!desktopAvailable || loading}>
+            {loading ? <LoaderCircle size={14} className="spin" /> : <RefreshCw size={14} />}
+            {loading ? "SCANNING..." : report ? "REFRESH STATUS" : "CHECK STATUS"}
+          </button>
+        </div>
+
+        {!desktopAvailable && (
+          <div className="steam-notice">
+            <AlertTriangle size={15} />
+            <span>System status is available in the Tauri desktop app. Start it with <code>npm run tauri dev</code>.</span>
+          </div>
+        )}
+        {error && <div className="steam-error" role="alert"><AlertTriangle size={15} />{error}</div>}
+        {!report && !error && (
+          <div className="launcher-empty"><Activity size={18} /> Run a local check to load system status.</div>
+        )}
+        {report && (
+          <>
+            <div className="system-stat-grid" aria-live="polite">
+              <div><span>DISTRIBUTION</span><strong>{report.osName}</strong></div>
+              <div><span>KERNEL</span><strong>{report.kernel}</strong></div>
+              <div><span>PROCESSOR</span><strong>{report.processor}</strong></div>
+              <div><span>ARCHITECTURE</span><strong>{report.architecture}</strong></div>
+              <div><span>LOGICAL CORES</span><strong>{report.logicalCores}</strong></div>
+              <div><span>UPTIME</span><strong>{formatUptime(report.uptimeSeconds)}</strong></div>
+            </div>
+            <div className="system-memory">
+              <div className="system-memory-heading">
+                <div><span>MEMORY</span><strong>{formatSystemBytes(report.memoryTotalBytes)} total</strong></div>
+                <small>{memoryUsedPercent}% used</small>
+              </div>
+              <div className="system-memory-track" role="meter" aria-label="Memory used" aria-valuemin={0} aria-valuemax={100} aria-valuenow={memoryUsedPercent}>
+                <span style={{ width: `${memoryUsedPercent}%` }} />
+              </div>
+              <p>{formatSystemBytes(report.memoryAvailableBytes)} available</p>
+            </div>
+          </>
+        )}
+        <p className="system-safety-note"><ShieldCheck size={13} /> Read-only local data from Linux system files. No network access or package manager commands.</p>
       </div>
     </section>
   );

@@ -4,6 +4,7 @@ mod mo2;
 mod obs;
 mod ollama;
 mod steam;
+mod system;
 
 #[tauri::command]
 fn scan_steam_library() -> Result<steam::SteamScanResult, String> {
@@ -18,6 +19,11 @@ fn launch_steam_game(app_id: String) -> Result<steam::SteamLaunchResult, String>
 #[tauri::command]
 fn check_mo2_environment(mo2_path: Option<String>) -> Result<mo2::Mo2Environment, String> {
     mo2::check_environment(mo2_path.as_deref())
+}
+
+#[tauri::command]
+fn read_system_status() -> Result<system::SystemStatus, String> {
+    system::read_status()
 }
 
 #[tauri::command]
@@ -123,6 +129,7 @@ pub fn run() {
             scan_steam_library,
             launch_steam_game,
             check_mo2_environment,
+            read_system_status,
             list_ollama_models,
             chat_with_ollama,
             read_obs_status,
