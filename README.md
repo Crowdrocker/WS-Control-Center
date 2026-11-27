@@ -17,6 +17,10 @@ Create a production frontend build with `npm run build`, or package the desktop 
 
 The Steam library module can scan standard Linux Steam locations and their configured libraries when requested. It reads installed app manifests only. A game can be launched only after a separate confirmation; the app passes its validated numeric Steam ID to the desktop's `steam://` URI handler and does not invoke a shell or modify game files.
 
-The app launcher stores user-added executable paths in the app's local configuration directory. It validates each path and only starts an app after an explicit confirmation, invoking the selected executable directly without a shell or custom arguments. The other sections are UI placeholders and are not connected to system services.
+The app launcher stores user-added executable paths in the app's local configuration directory. It validates each path and only starts an app after an explicit confirmation, invoking the selected executable directly without a shell or custom arguments.
+
+The MO2 / Proton module provides read-only checks for Arch Linux, Steam libraries, Proton tools, Protontricks, Wine, and an optional `ModOrganizer.exe` path. It shows manual setup notes but does not install packages, run commands, or modify prefixes.
+
+The remaining modules are UI placeholders and are not connected to system services.
 
 Run the focused Rust tests with `cargo test --manifest-path src-tauri/Cargo.toml`.

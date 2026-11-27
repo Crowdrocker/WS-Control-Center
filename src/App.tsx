@@ -58,7 +58,7 @@ const modules: ModuleInfo[] = [
     id: "mod-organizer",
     name: "Mod Organizer 2",
     eyebrow: "PROTON / MODDING",
-    description: "Prepare MO2 and its Proton dependencies in one place.",
+    description: "Check Arch Linux, Steam, Proton, and MO2 readiness.",
     icon: PackageOpen,
     accent: "cyan",
   },
@@ -375,9 +375,9 @@ function ModuleCard({
     <button className={`module-card accent-${module.accent}`} onClick={onClick}>
       <div className="module-card-top">
         <span className="module-index">0{index}</span>
-        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" ? "module-status-ready" : ""}`}>
+        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" ? "module-status-ready" : ""}`}>
           <span />
-          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : "PLANNED"}
+          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : module.id === "mod-organizer" ? "CHECKS" : "PLANNED"}
         </span>
       </div>
       <div className="module-icon"><Icon size={19} strokeWidth={1.7} /></div>
@@ -402,12 +402,14 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
           <h1>{module.name}</h1>
           <p>{module.description}</p>
         </div>
-        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" ? "readonly-badge" : ""}`}>
+        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" ? "readonly-badge" : ""}`}>
           <span />
-          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : "PLANNED"}
+          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : module.id === "mod-organizer" ? "READ-ONLY CHECKS" : "PLANNED"}
         </span>
       </div>
-      {module.id === "game-library" ? (
+      {module.id === "mod-organizer" ? (
+        <Mo2Setup />
+      ) : module.id === "game-library" ? (
         <SteamLibrary />
       ) : module.id === "app-launcher" ? (
         <AppLauncher />
@@ -449,6 +451,7 @@ type SteamGame = {
 type SteamScanResult = {
   steamDetected: boolean;
   librariesScanned: number;
+  libraryPaths: string[];
   games: SteamGame[];
   issues: string[];
 };
@@ -630,6 +633,127 @@ function SteamLibrary() {
               </button>
             </div>
           </section>
+        </div>
+      )}
+    </section>
+  );
+}
+
+type EnvironmentCheck = {
+  id: string;
+  label: string;
+  status: "found" | "missing" | "not_checked" | "optional";
+  detail: string;
+};
+
+type Mo2Environment = {
+  checks: EnvironmentCheck[];
+  protonTools: string[];
+  steamLibrariesScanned: number;
+  warnings: string[];
+  guidance: string[];
+};
+
+function Mo2Setup() {
+  const [mo2Path, setMo2Path] = useState("");
+  const [report, setReport] = useState<Mo2Environment | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [checking, setChecking] = useState(false);
+  const desktopAvailable = isControlCenterDesktop();
+
+  const runCheck = async () => {
+    setChecking(true);
+    setError(null);
+    try {
+      setReport(await invoke<Mo2Environment>("check_mo2_environment", {
+        mo2Path: mo2Path.trim() || null,
+      }));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setChecking(false);
+    }
+  };
+
+  return (
+    <section className="mo2-workspace" aria-label="MO2 and Proton setup checks">
+      <div className="mo2-intro-panel">
+        <div className="mo2-intro-copy">
+          <div className="section-overline">ARCH LINUX / READ-ONLY DIAGNOSTICS</div>
+          <h2>Check your modding setup</h2>
+          <p>Inspect Steam libraries, Proton tools, Protontricks, and an optional MO2 executable path.</p>
+          <span className="mo2-safety-note"><ShieldCheck size={13} /> No packages, prefixes, or files will be changed.</span>
+        </div>
+        <button className="mo2-check-button" type="button" onClick={runCheck} disabled={!desktopAvailable || checking}>
+          {checking ? <LoaderCircle size={15} className="spin" /> : <RefreshCw size={15} />}
+          {checking ? "CHECKING..." : "CHECK SETUP"}
+        </button>
+      </div>
+
+      <div className="mo2-path-panel">
+        <label htmlFor="mo2-executable-path">
+          <span>OPTIONAL MO2 EXECUTABLE PATH</span>
+          <input
+            id="mo2-executable-path"
+            value={mo2Path}
+            onChange={(event) => setMo2Path(event.target.value)}
+            placeholder="/path/to/ModOrganizer.exe"
+            autoComplete="off"
+            disabled={!desktopAvailable || checking}
+          />
+        </label>
+        <p>Only checks whether this selected file exists and is named ModOrganizer.exe; it does not open or execute it.</p>
+      </div>
+
+      {!desktopAvailable && (
+        <div className="steam-notice">
+          <AlertTriangle size={15} />
+          <span>Local checks are available in the Tauri desktop app. Start it with <code>npm run tauri dev</code>.</span>
+        </div>
+      )}
+      {error && <div className="steam-error" role="alert"><AlertTriangle size={15} />{error}</div>}
+
+      {report && (
+        <div className="mo2-report" aria-live="polite">
+          <div className="launcher-list-heading">
+            <div>
+              <div className="section-overline">ENVIRONMENT REPORT</div>
+              <h2>Setup checks</h2>
+            </div>
+            <span className="launcher-count">{report.steamLibrariesScanned} STEAM LIBRARIES</span>
+          </div>
+
+          <div className="mo2-check-grid">
+            {report.checks.map((check) => (
+              <article className={`mo2-check-card check-${check.status.replace("_", "-")}`} key={check.id}>
+                <div className="mo2-check-top">
+                  <span className="mo2-check-indicator" />
+                  <span>{check.status.replace("_", " ").toUpperCase()}</span>
+                </div>
+                <h3>{check.label}</h3>
+                <p>{check.detail}</p>
+              </article>
+            ))}
+          </div>
+
+          {report.protonTools.length > 0 && (
+            <div className="proton-tool-list">
+              <div className="section-overline">DETECTED PROTON TOOLS</div>
+              <div>{report.protonTools.map((tool) => <span key={tool}>{tool}</span>)}</div>
+            </div>
+          )}
+
+          <div className="mo2-guidance">
+            <div className="section-overline">MANUAL SETUP NOTES / ARCH LINUX</div>
+            <ol>{report.guidance.map((step) => <li key={step}>{step}</li>)}</ol>
+          </div>
+
+          {report.warnings.length > 0 && (
+            <details className="steam-issues">
+              <summary><AlertTriangle size={13} /> {report.warnings.length} scan warning{report.warnings.length === 1 ? "" : "s"}</summary>
+              <ul>{report.warnings.map((warning, index) => <li key={`${index}-${warning}`}>{warning}</li>)}</ul>
+            </details>
+          )}
         </div>
       )}
     </section>

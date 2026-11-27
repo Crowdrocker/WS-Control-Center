@@ -1,4 +1,5 @@
 mod launcher;
+mod mo2;
 mod steam;
 
 #[tauri::command]
@@ -9,6 +10,11 @@ fn scan_steam_library() -> Result<steam::SteamScanResult, String> {
 #[tauri::command]
 fn launch_steam_game(app_id: String) -> Result<steam::SteamLaunchResult, String> {
     steam::launch_steam_game(&app_id)
+}
+
+#[tauri::command]
+fn check_mo2_environment(mo2_path: Option<String>) -> Result<mo2::Mo2Environment, String> {
+    mo2::check_environment(mo2_path.as_deref())
 }
 
 #[tauri::command]
@@ -47,6 +53,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             scan_steam_library,
             launch_steam_game,
+            check_mo2_environment,
             list_launcher_apps,
             add_launcher_app,
             remove_launcher_app,
