@@ -4459,6 +4459,7 @@ dependencies = [
 name = "ws-control-center"
 version = "0.1.0"
 dependencies = [
+ "serde",
  "tauri",
  "tauri-build",
 ]
