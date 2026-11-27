@@ -1,6 +1,6 @@
 # WS Control Center
 
-A local-first workstation command deck for Linux gaming and creator workflows. The first milestone is a Tauri v2 desktop shell with a dark industrial interface and navigable module placeholders.
+A local-first workstation command deck for Linux gaming and creator workflows. The Tauri v2 desktop app uses a dark industrial interface, with the current functional modules and their safety boundaries described below.
 
 ## Development
 
@@ -27,6 +27,6 @@ The dotfile module backs up only individually selected regular files inside the 
 
 The OBS module connects to the local OBS WebSocket server (port 4455 by default) and reads the OBS version and scene list. An optional WebSocket password is held in memory only. This module does not switch scenes or control recording/streaming.
 
-The System Tools module remains a UI placeholder and is not connected to system services.
+The System Tools module reads local Linux distribution, kernel, CPU, memory, and uptime information when requested. It does not access the network, run package manager commands, or change system settings.
 
 Run the focused Rust tests with `cargo test --manifest-path src-tauri/Cargo.toml`.
