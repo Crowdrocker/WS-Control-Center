@@ -1,5 +1,6 @@
 mod launcher;
 mod mo2;
+mod ollama;
 mod steam;
 
 #[tauri::command]
@@ -15,6 +16,19 @@ fn launch_steam_game(app_id: String) -> Result<steam::SteamLaunchResult, String>
 #[tauri::command]
 fn check_mo2_environment(mo2_path: Option<String>) -> Result<mo2::Mo2Environment, String> {
     mo2::check_environment(mo2_path.as_deref())
+}
+
+#[tauri::command]
+async fn list_ollama_models() -> Result<Vec<ollama::OllamaModel>, String> {
+    ollama::list_models().await
+}
+
+#[tauri::command]
+async fn chat_with_ollama(
+    model: String,
+    messages: Vec<ollama::ChatMessage>,
+) -> Result<String, String> {
+    ollama::chat(&model, &messages).await
 }
 
 #[tauri::command]
@@ -54,6 +68,8 @@ pub fn run() {
             scan_steam_library,
             launch_steam_game,
             check_mo2_environment,
+            list_ollama_models,
+            chat_with_ollama,
             list_launcher_apps,
             add_launcher_app,
             remove_launcher_app,

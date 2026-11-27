@@ -21,6 +21,6 @@ The app launcher stores user-added executable paths in the app's local configura
 
 The MO2 / Proton module provides read-only checks for Arch Linux, Steam libraries, Proton tools, Protontricks, Wine, and an optional `ModOrganizer.exe` path. It shows manual setup notes but does not install packages, run commands, or modify prefixes.
 
-The remaining modules are UI placeholders and are not connected to system services.
+The Ollama assistant connects on request to the local Ollama API at `127.0.0.1:11434`, lists available models, and keeps chat history in memory only. It does not send microphone audio, persist conversations, or perform system actions. The remaining modules are UI placeholders and are not connected to system services.
 
 Run the focused Rust tests with `cargo test --manifest-path src-tauri/Cargo.toml`.

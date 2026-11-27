@@ -80,9 +80,9 @@ const modules: ModuleInfo[] = [
   },
   {
     id: "voice-control",
-    name: "Ollama voice",
-    eyebrow: "LOCAL AI / AUDIO",
-    description: "Explore local voice commands powered by Ollama.",
+    name: "Ollama assistant",
+    eyebrow: "LOCAL AI / OLLAMA",
+    description: "Chat with local Ollama models. No microphone or system actions.",
     icon: AudioLines,
     accent: "cyan",
   },
@@ -375,9 +375,9 @@ function ModuleCard({
     <button className={`module-card accent-${module.accent}`} onClick={onClick}>
       <div className="module-card-top">
         <span className="module-index">0{index}</span>
-        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" ? "module-status-ready" : ""}`}>
+        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" ? "module-status-ready" : ""}`}>
           <span />
-          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : module.id === "mod-organizer" ? "CHECKS" : "PLANNED"}
+          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : module.id === "mod-organizer" ? "CHECKS" : module.id === "voice-control" ? "LOCAL" : "PLANNED"}
         </span>
       </div>
       <div className="module-icon"><Icon size={19} strokeWidth={1.7} /></div>
@@ -402,9 +402,9 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
           <h1>{module.name}</h1>
           <p>{module.description}</p>
         </div>
-        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" ? "readonly-badge" : ""}`}>
+        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" ? "readonly-badge" : ""}`}>
           <span />
-          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : module.id === "mod-organizer" ? "READ-ONLY CHECKS" : "PLANNED"}
+          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : module.id === "mod-organizer" ? "READ-ONLY CHECKS" : module.id === "voice-control" ? "LOCAL OLLAMA" : "PLANNED"}
         </span>
       </div>
       {module.id === "mod-organizer" ? (
@@ -413,6 +413,8 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
         <SteamLibrary />
       ) : module.id === "app-launcher" ? (
         <AppLauncher />
+      ) : module.id === "voice-control" ? (
+        <OllamaChat />
       ) : (
         <>
           <div className="module-placeholder">
@@ -756,6 +758,200 @@ function Mo2Setup() {
           )}
         </div>
       )}
+    </section>
+  );
+}
+
+type OllamaModel = {
+  name: string;
+};
+
+type OllamaMessage = {
+  role: "user" | "assistant";
+  content: string;
+};
+
+function boundedOllamaContext(messages: OllamaMessage[]): OllamaMessage[] {
+  const encoder = new TextEncoder();
+  const context: OllamaMessage[] = [];
+  let totalBytes = 0;
+  for (const message of [...messages].reverse()) {
+    const messageBytes = encoder.encode(message.content).byteLength;
+    if (context.length >= 40 || totalBytes + messageBytes > 65_536) break;
+    context.push(message);
+    totalBytes += messageBytes;
+  }
+  return context.reverse();
+}
+
+function OllamaChat() {
+  const [models, setModels] = useState<OllamaModel[]>([]);
+  const [selectedModel, setSelectedModel] = useState("");
+  const [messages, setMessages] = useState<OllamaMessage[]>([]);
+  const [draft, setDraft] = useState("");
+  const [pendingPrompt, setPendingPrompt] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [connected, setConnected] = useState(false);
+  const [connecting, setConnecting] = useState(false);
+  const [sending, setSending] = useState(false);
+  const desktopAvailable = isControlCenterDesktop();
+
+  const connect = async () => {
+    setConnecting(true);
+    setConnected(false);
+    setError(null);
+    try {
+      const availableModels = await invoke<OllamaModel[]>("list_ollama_models");
+      setModels(availableModels);
+      setConnected(true);
+      setSelectedModel((current) =>
+        availableModels.some((model) => model.name === current)
+          ? current
+          : availableModels[0]?.name ?? "",
+      );
+    } catch (reason) {
+      setModels([]);
+      setSelectedModel("");
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  const sendMessage = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const prompt = draft.trim();
+    if (!prompt || !selectedModel || sending) return;
+
+    if (new TextEncoder().encode(prompt).byteLength > 16_384) {
+      setError("This message is too long. Keep it under 16 KB and try again.");
+      return;
+    }
+
+    const userMessage: OllamaMessage = { role: "user", content: prompt };
+    const requestMessages = boundedOllamaContext([...messages, userMessage]);
+    setPendingPrompt(prompt);
+    setSending(true);
+    setError(null);
+    try {
+      const response = await invoke<string>("chat_with_ollama", {
+        model: selectedModel,
+        messages: requestMessages,
+      });
+      const assistantMessage: OllamaMessage = { role: "assistant", content: response };
+      setMessages([...requestMessages, assistantMessage].slice(-40));
+      setDraft("");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setPendingPrompt(null);
+      setSending(false);
+    }
+  };
+
+  return (
+    <section className="ollama-workspace" aria-label="Local Ollama chat">
+      <div className="ollama-panel">
+        <div className="ollama-panel-heading">
+          <div>
+            <div className="section-overline">LOCAL SERVICE / NO SYSTEM ACTIONS</div>
+            <h2>Connect to Ollama</h2>
+            <p>App requests go only to <code>http://127.0.0.1:11434</code>. Use a locally stored model for on-device inference.</p>
+          </div>
+          <button
+            className="ollama-connect-button"
+            type="button"
+            onClick={connect}
+            disabled={!desktopAvailable || connecting || sending}
+          >
+            {connecting ? <LoaderCircle size={14} className="spin" /> : <RefreshCw size={14} />}
+            {connecting ? "CONNECTING..." : connected ? "REFRESH MODELS" : "CONNECT"}
+          </button>
+        </div>
+
+        <div className="ollama-toolbar">
+          <div className={`ollama-status ${connected ? "connected" : ""}`}>
+            <span />
+            {connected ? "OLLAMA REACHABLE" : "NOT CONNECTED"}
+          </div>
+          <label className="ollama-model-select">
+            <span>MODEL</span>
+            <select
+              value={selectedModel}
+              onChange={(event) => setSelectedModel(event.target.value)}
+              disabled={!connected || models.length === 0 || sending}
+            >
+              {models.length === 0 && <option value="">No models available</option>}
+              {models.map((model) => <option value={model.name} key={model.name}>{model.name}</option>)}
+            </select>
+          </label>
+        </div>
+
+        {!desktopAvailable && (
+          <div className="steam-notice">
+            <AlertTriangle size={15} />
+            <span>Local Ollama access is available in the Tauri desktop app. Start it with <code>npm run tauri dev</code>.</span>
+          </div>
+        )}
+        {connected && models.length === 0 && (
+          <div className="ollama-empty-models" role="status">
+            Ollama is reachable, but it has no models available. Add a model to Ollama, then refresh this list.
+          </div>
+        )}
+        {error && <div className="steam-error" role="alert"><AlertTriangle size={15} />{error}</div>}
+      </div>
+
+      <div className="ollama-chat-panel">
+        <div className="ollama-chat-heading">
+          <div>
+            <div className="section-overline">SESSION / IN-MEMORY ONLY</div>
+            <h2>Local chat</h2>
+          </div>
+          <span className="launcher-count">NO SYSTEM ACTIONS</span>
+        </div>
+
+        <div className="ollama-message-list" role="log" aria-live="polite">
+          {messages.length === 0 && pendingPrompt === null && (
+            <div className="ollama-chat-empty">
+              <Sparkles size={18} />
+              <span>Connect to a local model and send a message to begin.</span>
+            </div>
+          )}
+          {messages.map((message, index) => (
+            <article className={`ollama-message ${message.role}`} key={`${index}-${message.role}`}>
+              <span>{message.role === "user" ? "YOU" : "MODEL"}</span>
+              <p>{message.content}</p>
+            </article>
+          ))}
+          {pendingPrompt !== null && (
+            <article className="ollama-message user pending">
+              <span>YOU</span>
+              <p>{pendingPrompt}</p>
+            </article>
+          )}
+          {sending && <div className="ollama-thinking"><LoaderCircle size={13} className="spin" /> MODEL THINKING...</div>}
+        </div>
+
+        <form className="ollama-chat-form" onSubmit={sendMessage}>
+          <textarea
+            value={draft}
+            onChange={(event) => setDraft(event.target.value)}
+            placeholder={connected ? "Ask your local model..." : "Connect to Ollama to start chatting"}
+            aria-label="Message for the local Ollama model"
+            maxLength={16_384}
+            disabled={!connected || !selectedModel || sending}
+          />
+          <button
+            className="ollama-send-button"
+            type="submit"
+            disabled={!connected || !selectedModel || sending || !draft.trim()}
+          >
+            {sending ? <LoaderCircle size={15} className="spin" /> : <ArrowUpRight size={15} />}
+            {sending ? "WAIT" : "SEND"}
+          </button>
+        </form>
+        <p className="ollama-privacy-note"><ShieldCheck size={12} /> No microphone, saved chat history, or control-center actions in this version.</p>
+      </div>
     </section>
   );
 }
