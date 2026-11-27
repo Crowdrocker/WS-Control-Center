@@ -15,7 +15,7 @@ Create a production frontend build with `npm run build`, or package the desktop 
 
 ## Current scope
 
-The Steam library module can scan standard Linux Steam locations and their configured libraries when requested. It reads installed app manifests only and does not launch games or modify files.
+The Steam library module can scan standard Linux Steam locations and their configured libraries when requested. It reads installed app manifests only. A game can be launched only after a separate confirmation; the app passes its validated numeric Steam ID to the desktop's `steam://` URI handler and does not invoke a shell or modify game files.
 
 The app launcher stores user-added executable paths in the app's local configuration directory. It validates each path and only starts an app after an explicit confirmation, invoking the selected executable directly without a shell or custom arguments. The other sections are UI placeholders and are not connected to system services.
 

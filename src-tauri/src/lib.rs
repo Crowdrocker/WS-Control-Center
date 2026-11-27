@@ -7,6 +7,11 @@ fn scan_steam_library() -> Result<steam::SteamScanResult, String> {
 }
 
 #[tauri::command]
+fn launch_steam_game(app_id: String) -> Result<steam::SteamLaunchResult, String> {
+    steam::launch_steam_game(&app_id)
+}
+
+#[tauri::command]
 fn list_launcher_apps(app: tauri::AppHandle) -> Result<Vec<launcher::LauncherApp>, String> {
     launcher::list_apps(&app)
 }
@@ -41,6 +46,7 @@ pub fn run() {
     tauri::Builder::default()
         .invoke_handler(tauri::generate_handler![
             scan_steam_library,
+            launch_steam_game,
             list_launcher_apps,
             add_launcher_app,
             remove_launcher_app,
