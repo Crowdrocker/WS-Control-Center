@@ -106,7 +106,7 @@ const modules: ModuleInfo[] = [
     id: "obs",
     name: "OBS Studio",
     eyebrow: "STREAM / RECORD",
-    description: "A future home for your streaming and recording setup.",
+    description: "Read OBS status and scene list over a local WebSocket.",
     icon: MonitorPlay,
     accent: "cyan",
   },
@@ -375,9 +375,9 @@ function ModuleCard({
     <button className={`module-card accent-${module.accent}`} onClick={onClick}>
       <div className="module-card-top">
         <span className="module-index">0{index}</span>
-        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" || module.id === "dotfile-sync" ? "module-status-ready" : ""}`}>
+        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" || module.id === "dotfile-sync" || module.id === "obs" ? "module-status-ready" : ""}`}>
           <span />
-          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : module.id === "mod-organizer" ? "CHECKS" : module.id === "voice-control" ? "LOCAL" : module.id === "dotfile-sync" ? "BACKUP" : "PLANNED"}
+          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : module.id === "mod-organizer" ? "CHECKS" : module.id === "voice-control" ? "LOCAL" : module.id === "dotfile-sync" ? "BACKUP" : module.id === "obs" ? "READ ONLY" : "PLANNED"}
         </span>
       </div>
       <div className="module-icon"><Icon size={19} strokeWidth={1.7} /></div>
@@ -402,9 +402,9 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
           <h1>{module.name}</h1>
           <p>{module.description}</p>
         </div>
-        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" || module.id === "dotfile-sync" ? "readonly-badge" : ""}`}>
+        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" || module.id === "mod-organizer" || module.id === "voice-control" || module.id === "dotfile-sync" || module.id === "obs" ? "readonly-badge" : ""}`}>
           <span />
-          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : module.id === "mod-organizer" ? "READ-ONLY CHECKS" : module.id === "voice-control" ? "LOCAL OLLAMA" : module.id === "dotfile-sync" ? "CONFIRM BEFORE BACKUP" : "PLANNED"}
+          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : module.id === "mod-organizer" ? "READ-ONLY CHECKS" : module.id === "voice-control" ? "LOCAL OLLAMA" : module.id === "dotfile-sync" ? "CONFIRM BEFORE BACKUP" : module.id === "obs" ? "LOCAL / READ ONLY" : "PLANNED"}
         </span>
       </div>
       {module.id === "mod-organizer" ? (
@@ -417,6 +417,8 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
         <OllamaChat />
       ) : module.id === "dotfile-sync" ? (
         <DotfileSync />
+      ) : module.id === "obs" ? (
+        <ObsMonitor />
       ) : (
         <>
           <div className="module-placeholder">
@@ -953,6 +955,156 @@ function OllamaChat() {
           </button>
         </form>
         <p className="ollama-privacy-note"><ShieldCheck size={12} /> No microphone, saved chat history, or control-center actions in this version.</p>
+      </div>
+    </section>
+  );
+}
+
+type ObsScene = {
+  sceneName: string;
+  sceneIndex: number;
+};
+
+type ObsStatus = {
+  port: number;
+  obsVersion: string;
+  websocketVersion: string;
+  currentScene: string;
+  scenes: ObsScene[];
+  authenticated: boolean;
+};
+
+function ObsMonitor() {
+  const [port, setPort] = useState("4455");
+  const [password, setPassword] = useState("");
+  const [report, setReport] = useState<ObsStatus | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [connecting, setConnecting] = useState(false);
+  const desktopAvailable = isControlCenterDesktop();
+
+  const connect = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    const portNumber = Number(port);
+    if (!Number.isInteger(portNumber) || portNumber < 1 || portNumber > 65_535) {
+      setError("Enter a port between 1 and 65535.");
+      return;
+    }
+
+    setConnecting(true);
+    setError(null);
+    setReport(null);
+    try {
+      setReport(await invoke<ObsStatus>("read_obs_status", {
+        port: portNumber,
+        password: password || null,
+      }));
+      setPassword("");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setConnecting(false);
+    }
+  };
+
+  return (
+    <section className="obs-workspace" aria-label="OBS Studio status">
+      <div className="obs-connect-panel">
+        <div className="launcher-panel-heading">
+          <div>
+            <div className="section-overline">OBS WEBSOCKET / READ-ONLY</div>
+            <h2>Connect to OBS Studio</h2>
+            <p>Reads the OBS version and current scene list from the local WebSocket server. Default port: 4455.</p>
+          </div>
+          <div className="launcher-add-icon"><MonitorPlay size={18} /></div>
+        </div>
+
+        <form className="obs-connect-form" onSubmit={connect}>
+          <label>
+            <span>LOCAL PORT</span>
+            <input
+              type="number"
+              min="1"
+              max="65535"
+              value={port}
+              onChange={(event) => {
+                setPort(event.target.value);
+                setReport(null);
+                setError(null);
+              }}
+              required
+              disabled={!desktopAvailable || connecting}
+            />
+          </label>
+          <label>
+            <span>WEBSOCKET PASSWORD <small>OPTIONAL</small></span>
+            <input
+              type="password"
+              value={password}
+              onChange={(event) => {
+                setPassword(event.target.value);
+                setReport(null);
+                setError(null);
+              }}
+              autoComplete="off"
+              placeholder="Only if enabled in OBS"
+              disabled={!desktopAvailable || connecting}
+            />
+          </label>
+          <button className="obs-connect-button" type="submit" disabled={!desktopAvailable || connecting}>
+            {connecting ? <LoaderCircle size={14} className="spin" /> : <RefreshCw size={14} />}
+            {connecting ? "CONNECTING..." : report ? "REFRESH STATUS" : "CONNECT"}
+          </button>
+        </form>
+
+        <p className="obs-safety-note"><ShieldCheck size={13} /> Connects only to 127.0.0.1. The password is not saved; only read-only OBS requests are sent.</p>
+        {!desktopAvailable && (
+          <div className="steam-notice">
+            <AlertTriangle size={15} />
+            <span>OBS status is available in the Tauri desktop app. Start it with <code>npm run tauri dev</code>.</span>
+          </div>
+        )}
+        {error && <div className="steam-error" role="alert"><AlertTriangle size={15} />{error}</div>}
+      </div>
+
+      <div className="obs-status-panel" aria-live="polite">
+        <div className="launcher-list-heading">
+          <div>
+            <div className="section-overline">LIVE QUERY / NO SUBSCRIPTIONS</div>
+            <h2>OBS status</h2>
+          </div>
+          <span className="launcher-count">{report ? `PORT ${report.port}` : "NOT CONNECTED"}</span>
+        </div>
+        {!report ? (
+          <div className="launcher-empty"><MonitorPlay size={18} /> Connect to load the OBS version and scene list.</div>
+        ) : (
+          <>
+            <div className="obs-version-grid">
+              <div><span>OBS VERSION</span><strong>{report.obsVersion}</strong></div>
+              <div><span>WEBSOCKET</span><strong>{report.websocketVersion}</strong></div>
+              <div><span>AUTHENTICATION</span><strong>{report.authenticated ? "PASSWORD VERIFIED" : "NOT REQUIRED"}</strong></div>
+            </div>
+            <div className="obs-scene-heading">
+              <div>
+                <div className="section-overline">PROGRAM SCENE</div>
+                <h3>{report.currentScene}</h3>
+              </div>
+              <span className="launcher-count">{String(report.scenes.length).padStart(2, "0")} SCENES</span>
+            </div>
+            {report.scenes.length === 0 ? (
+              <div className="launcher-empty"><AlertTriangle size={17} /> OBS reported no scenes.</div>
+            ) : (
+              <div className="obs-scene-list">
+                {report.scenes.map((scene) => (
+                  <div className={`obs-scene-item ${scene.sceneName === report.currentScene ? "active" : ""}`} key={`${scene.sceneIndex}-${scene.sceneName}`}>
+                    <span>{String(scene.sceneIndex + 1).padStart(2, "0")}</span>
+                    <strong>{scene.sceneName}</strong>
+                    {scene.sceneName === report.currentScene && <small>ON AIR</small>}
+                  </div>
+                ))}
+              </div>
+            )}
+          </>
+        )}
       </div>
     </section>
   );
