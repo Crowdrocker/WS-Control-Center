@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import {
   AlertTriangle,
   Activity,
   ArrowDownRight,
   ArrowUpRight,
   AudioLines,
+  CheckCircle2,
   Blocks,
   ChevronRight,
   CircleHelp,
@@ -13,8 +14,12 @@ import {
   Gamepad2,
   Github,
   LayoutDashboard,
+  LoaderCircle,
   MonitorPlay,
   PackageOpen,
+  Play,
+  Plus,
+  RefreshCw,
   Search,
   Settings2,
   ShieldCheck,
@@ -22,11 +27,11 @@ import {
   Terminal,
   Volume2,
   WandSparkles,
+  Trash2,
   X,
-  LoaderCircle,
-  RefreshCw,
 } from "lucide-react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+import { getCurrentWebview } from "@tauri-apps/api/webview";
 import logo from "./assets/ws-logo.png";
 
 type ModuleId =
@@ -69,7 +74,7 @@ const modules: ModuleInfo[] = [
     id: "app-launcher",
     name: "App launcher",
     eyebrow: "WORKSPACE",
-    description: "A focused home for the tools you use every day.",
+    description: "Save favorite app paths locally and launch them with confirmation.",
     icon: Blocks,
     accent: "violet",
   },
@@ -117,6 +122,10 @@ const navItems: { id: ModuleId; label: string; icon: typeof LayoutDashboard }[] 
   { id: "system-tools", label: "System tools", icon: Settings2 },
   { id: "obs", label: "OBS Studio", icon: MonitorPlay },
 ];
+
+function isControlCenterDesktop() {
+  return isTauri() && getCurrentWebview().label === "main";
+}
 
 function App() {
   const [activeModule, setActiveModule] = useState<ModuleId>("overview");
@@ -366,8 +375,9 @@ function ModuleCard({
     <button className={`module-card accent-${module.accent}`} onClick={onClick}>
       <div className="module-card-top">
         <span className="module-index">0{index}</span>
-        <span className={`module-status ${module.id === "game-library" ? "module-status-readonly" : ""}`}>
-          <span /> {module.id === "game-library" ? "READ-ONLY" : "PLANNED"}
+        <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" ? "module-status-ready" : ""}`}>
+          <span />
+          {module.id === "game-library" ? "READ-ONLY" : module.id === "app-launcher" ? "LOCAL" : "PLANNED"}
         </span>
       </div>
       <div className="module-icon"><Icon size={19} strokeWidth={1.7} /></div>
@@ -392,12 +402,15 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
           <h1>{module.name}</h1>
           <p>{module.description}</p>
         </div>
-        <span className={`planned-badge ${module.id === "game-library" ? "readonly-badge" : ""}`}>
-          <span /> {module.id === "game-library" ? "READ-ONLY" : "PLANNED"}
+        <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" ? "readonly-badge" : ""}`}>
+          <span />
+          {module.id === "game-library" ? "READ-ONLY" : module.id === "app-launcher" ? "LOCAL CONFIG" : "PLANNED"}
         </span>
       </div>
       {module.id === "game-library" ? (
         <SteamLibrary />
+      ) : module.id === "app-launcher" ? (
+        <AppLauncher />
       ) : (
         <>
           <div className="module-placeholder">
@@ -445,7 +458,7 @@ function SteamLibrary() {
   const [error, setError] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [scanning, setScanning] = useState(false);
-  const desktopAvailable = isTauri();
+  const desktopAvailable = isControlCenterDesktop();
 
   const runScan = async () => {
     setScanning(true);
@@ -549,6 +562,244 @@ function SteamLibrary() {
               <ul>{scan.issues.map((issue, index) => <li key={`${index}-${issue}`}>{issue}</li>)}</ul>
             </details>
           )}
+        </div>
+      )}
+    </section>
+  );
+}
+
+type LauncherApp = {
+  name: string;
+  executable: string;
+};
+
+type LaunchResult = {
+  processId: number;
+};
+
+function AppLauncher() {
+  const [apps, setApps] = useState<LauncherApp[]>([]);
+  const [name, setName] = useState("");
+  const [executable, setExecutable] = useState("");
+  const [pendingLaunch, setPendingLaunch] = useState<LauncherApp | null>(null);
+  const [launchError, setLaunchError] = useState<string | null>(null);
+  const [loadError, setLoadError] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [launching, setLaunching] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const desktopAvailable = isControlCenterDesktop();
+
+  useEffect(() => {
+    if (!desktopAvailable) {
+      setLoading(false);
+      return;
+    }
+
+    let active = true;
+    invoke<LauncherApp[]>("list_launcher_apps")
+      .then((entries) => {
+        if (active) setApps(entries);
+      })
+      .catch((reason: unknown) => {
+        if (active) setLoadError(reason instanceof Error ? reason.message : String(reason));
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [desktopAvailable]);
+
+  const handleAdd = async (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSaving(true);
+    setError(null);
+    setNotice(null);
+    try {
+      const updated = await invoke<LauncherApp[]>("add_launcher_app", { name, executable });
+      setApps(updated);
+      setName("");
+      setExecutable("");
+      setNotice("App saved to your local launcher.");
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleRemove = async (entry: LauncherApp) => {
+    setRemoving(entry.executable);
+    setError(null);
+    setNotice(null);
+    try {
+      setApps(await invoke<LauncherApp[]>("remove_launcher_app", { executable: entry.executable }));
+      setNotice(`${entry.name} was removed from your launcher.`);
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setRemoving(null);
+    }
+  };
+
+  const confirmLaunch = async () => {
+    if (!pendingLaunch) return;
+    setLaunching(true);
+    setLaunchError(null);
+    try {
+      const result = await invoke<LaunchResult>("launch_launcher_app", {
+        executable: pendingLaunch.executable,
+      });
+      setNotice(`${pendingLaunch.name} started (process ${result.processId}).`);
+      setPendingLaunch(null);
+    } catch (reason) {
+      setLaunchError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLaunching(false);
+    }
+  };
+
+  return (
+    <section className="launcher-workspace" aria-label="App launcher">
+      <div className="launcher-add-panel">
+        <div className="launcher-panel-heading">
+          <div>
+            <div className="section-overline">LOCAL APP SHORTCUTS</div>
+            <h2>Add an application</h2>
+            <p>Save a full executable path. The app starts directly without a shell or custom arguments.</p>
+          </div>
+          <div className="launcher-add-icon"><Plus size={18} /></div>
+        </div>
+        <form className="launcher-add-form" onSubmit={handleAdd}>
+          <label>
+            <span>DISPLAY NAME</span>
+            <input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Firefox"
+              maxLength={80}
+              required
+              disabled={!desktopAvailable || saving}
+            />
+          </label>
+          <label>
+            <span>EXECUTABLE PATH</span>
+            <input
+              value={executable}
+              onChange={(event) => setExecutable(event.target.value)}
+              placeholder="/usr/bin/firefox"
+              autoComplete="off"
+              required
+              disabled={!desktopAvailable || saving}
+            />
+          </label>
+          <button className="launcher-save-button" type="submit" disabled={!desktopAvailable || saving}>
+            {saving ? <LoaderCircle size={14} className="spin" /> : <Plus size={14} />}
+            {saving ? "SAVING..." : "ADD APP"}
+          </button>
+        </form>
+        {!desktopAvailable && (
+          <div className="steam-notice">
+            <AlertTriangle size={15} />
+            <span>App management is available in the Tauri desktop app. Start it with <code>npm run tauri dev</code>.</span>
+          </div>
+        )}
+      </div>
+
+      {error && <div className="steam-error" role="alert"><AlertTriangle size={15} />{error}</div>}
+      {loadError && <div className="steam-error" role="alert"><AlertTriangle size={15} />{loadError}</div>}
+      {notice && <div className="launcher-notice" role="status"><CheckCircle2 size={15} />{notice}</div>}
+
+      <div className="launcher-list-panel">
+        <div className="launcher-list-heading">
+          <div>
+            <div className="section-overline">YOUR SHORTCUTS</div>
+            <h2>Saved applications</h2>
+          </div>
+          <span className="launcher-count">{String(apps.length).padStart(2, "0")} APPS</span>
+        </div>
+        {loading ? (
+          <div className="launcher-empty"><LoaderCircle size={17} className="spin" /> Loading saved apps...</div>
+        ) : !desktopAvailable ? (
+          <div className="launcher-empty"><AlertTriangle size={17} /> Open the Tauri desktop app to load saved applications.</div>
+        ) : loadError ? (
+          <div className="launcher-empty"><AlertTriangle size={17} /> Saved apps could not be loaded. Resolve the error above and reopen this module.</div>
+        ) : apps.length === 0 ? (
+          <div className="launcher-empty">
+            <Blocks size={19} />
+            <span>No apps saved yet. Add an executable above to create your first shortcut.</span>
+          </div>
+        ) : (
+          <div className="launcher-app-list">
+            {apps.map((entry) => (
+              <article className="launcher-app-card" key={entry.executable}>
+                <div className="launcher-app-icon"><Blocks size={18} /></div>
+                <div className="launcher-app-details">
+                  <h3>{entry.name}</h3>
+                  <code title={entry.executable}>{entry.executable}</code>
+                </div>
+                <button
+                  className="launcher-run-button"
+                  type="button"
+                  disabled={!desktopAvailable || removing === entry.executable}
+                  onClick={() => {
+                    setPendingLaunch(entry);
+                    setLaunchError(null);
+                    setError(null);
+                    setNotice(null);
+                  }}
+                >
+                  <Play size={13} fill="currentColor" /> LAUNCH
+                </button>
+                <button
+                  className="launcher-remove-button"
+                  type="button"
+                  aria-label={`Remove ${entry.name}`}
+                  title={`Remove ${entry.name}`}
+                  disabled={!desktopAvailable || removing === entry.executable}
+                  onClick={() => handleRemove(entry)}
+                >
+                  {removing === entry.executable ? <LoaderCircle size={14} className="spin" /> : <Trash2 size={14} />}
+                </button>
+              </article>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {pendingLaunch && (
+        <div className="launcher-dialog-backdrop">
+          <section className="launcher-dialog" role="dialog" aria-modal="true" aria-labelledby="launch-dialog-title">
+            <div className="section-overline">USER CONFIRMATION REQUIRED</div>
+            <h2 id="launch-dialog-title">Launch {pendingLaunch.name}?</h2>
+            <p>This starts the saved executable directly. No shell is used.</p>
+            <code title={pendingLaunch.executable}>{pendingLaunch.executable}</code>
+            {launchError && <div className="steam-error" role="alert"><AlertTriangle size={15} />{launchError}</div>}
+            <div className="launcher-dialog-actions">
+              <button
+                className="launcher-cancel-button"
+                type="button"
+                disabled={launching}
+                onClick={() => setPendingLaunch(null)}
+              >
+                CANCEL
+              </button>
+              <button
+                className="launcher-run-button"
+                type="button"
+                disabled={launching}
+                onClick={confirmLaunch}
+              >
+                {launching ? <LoaderCircle size={14} className="spin" /> : <Play size={13} fill="currentColor" />}
+                {launching ? "STARTING..." : "CONFIRM LAUNCH"}
+              </button>
+            </div>
+          </section>
         </div>
       )}
     </section>
