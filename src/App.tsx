@@ -65,8 +65,8 @@ const modules: ModuleInfo[] = [
   {
     id: "game-library",
     name: "Game library",
-    eyebrow: "STEAM / NON-STEAM",
-    description: "Scan installed Steam games without launching apps or changing files.",
+    eyebrow: "STEAM / GAME LAUNCHER",
+    description: "Find installed Steam games and send confirmed launch requests.",
     icon: Gamepad2,
     accent: "orange",
   },
@@ -377,7 +377,7 @@ function ModuleCard({
         <span className="module-index">0{index}</span>
         <span className={`module-status ${module.id === "game-library" || module.id === "app-launcher" ? "module-status-ready" : ""}`}>
           <span />
-          {module.id === "game-library" ? "READ-ONLY" : module.id === "app-launcher" ? "LOCAL" : "PLANNED"}
+          {module.id === "game-library" ? "CONFIRM" : module.id === "app-launcher" ? "LOCAL" : "PLANNED"}
         </span>
       </div>
       <div className="module-icon"><Icon size={19} strokeWidth={1.7} /></div>
@@ -404,7 +404,7 @@ function ModuleView({ module, onBack }: { module: ModuleInfo; onBack: () => void
         </div>
         <span className={`planned-badge ${module.id === "game-library" || module.id === "app-launcher" ? "readonly-badge" : ""}`}>
           <span />
-          {module.id === "game-library" ? "READ-ONLY" : module.id === "app-launcher" ? "LOCAL CONFIG" : "PLANNED"}
+          {module.id === "game-library" ? "USER CONFIRM" : module.id === "app-launcher" ? "LOCAL CONFIG" : "PLANNED"}
         </span>
       </div>
       {module.id === "game-library" ? (
@@ -456,13 +456,18 @@ type SteamScanResult = {
 function SteamLibrary() {
   const [scan, setScan] = useState<SteamScanResult | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [launchError, setLaunchError] = useState<string | null>(null);
+  const [launchNotice, setLaunchNotice] = useState<string | null>(null);
   const [filter, setFilter] = useState("");
   const [scanning, setScanning] = useState(false);
+  const [launching, setLaunching] = useState(false);
+  const [pendingLaunch, setPendingLaunch] = useState<SteamGame | null>(null);
   const desktopAvailable = isControlCenterDesktop();
 
   const runScan = async () => {
     setScanning(true);
     setError(null);
+    setLaunchNotice(null);
     try {
       setScan(await invoke<SteamScanResult>("scan_steam_library"));
       setFilter("");
@@ -470,6 +475,25 @@ function SteamLibrary() {
       setError(reason instanceof Error ? reason.message : String(reason));
     } finally {
       setScanning(false);
+    }
+  };
+
+  const confirmLaunch = async () => {
+    if (!pendingLaunch) return;
+    setLaunching(true);
+    setLaunchError(null);
+    try {
+      const result = await invoke<{ processId: number }>("launch_steam_game", {
+        appId: pendingLaunch.appId,
+      });
+      setLaunchNotice(
+        `Launch request sent to Steam for ${pendingLaunch.name} (desktop request process ${result.processId}).`,
+      );
+      setPendingLaunch(null);
+    } catch (reason) {
+      setLaunchError(reason instanceof Error ? reason.message : String(reason));
+    } finally {
+      setLaunching(false);
     }
   };
 
@@ -483,7 +507,7 @@ function SteamLibrary() {
         <div>
           <div className="section-overline">LOCAL LIBRARY SCAN</div>
           <h2>Installed Steam games</h2>
-          <p>Reads Steam app manifests from standard Linux library locations. Nothing is launched or changed.</p>
+          <p>Reads installed Steam manifests. Starting a game requires a separate confirmation.</p>
         </div>
         <button
           className="scan-button"
@@ -498,10 +522,11 @@ function SteamLibrary() {
       {!desktopAvailable && (
         <div className="steam-notice">
           <AlertTriangle size={15} />
-          <span>Local scanning is available in the Tauri desktop app. Start it with <code>npm run tauri dev</code>.</span>
+          <span>Scanning and launch requests are available in the Tauri desktop app. Start it with <code>npm run tauri dev</code>.</span>
         </div>
       )}
       {error && <div className="steam-error" role="alert"><AlertTriangle size={15} />{error}</div>}
+      {launchNotice && <div className="launcher-notice" role="status"><CheckCircle2 size={15} />{launchNotice}</div>}
       {scan && (
         <div className="steam-results" aria-live="polite">
           <div className="steam-results-bar">
@@ -552,6 +577,19 @@ function SteamLibrary() {
                     <small title={game.libraryPath}>{game.libraryPath}</small>
                   </div>
                   <span className="installed-tag">INSTALLED</span>
+                  <button
+                    className="game-launch-button"
+                    type="button"
+                    disabled={!desktopAvailable || launching}
+                    onClick={() => {
+                      setPendingLaunch(game);
+                      setLaunchError(null);
+                      setLaunchNotice(null);
+                    }}
+                    title="Send a launch request to Steam after confirmation"
+                  >
+                    <Play size={12} fill="currentColor" /> PLAY
+                  </button>
                 </article>
               ))}
             </div>
@@ -562,6 +600,36 @@ function SteamLibrary() {
               <ul>{scan.issues.map((issue, index) => <li key={`${index}-${issue}`}>{issue}</li>)}</ul>
             </details>
           )}
+        </div>
+      )}
+      {pendingLaunch && (
+        <div className="launcher-dialog-backdrop">
+          <section className="launcher-dialog" role="dialog" aria-modal="true" aria-labelledby="steam-launch-dialog-title">
+            <div className="section-overline">STEAM LAUNCH REQUEST</div>
+            <h2 id="steam-launch-dialog-title">Start {pendingLaunch.name}?</h2>
+            <p>This asks your desktop to open the game in Steam. Steam may open or focus before the game starts.</p>
+            <code>steam://rungameid/{pendingLaunch.appId}</code>
+            {launchError && <div className="steam-error" role="alert"><AlertTriangle size={15} />{launchError}</div>}
+            <div className="launcher-dialog-actions">
+              <button
+                className="launcher-cancel-button"
+                type="button"
+                disabled={launching}
+                onClick={() => setPendingLaunch(null)}
+              >
+                CANCEL
+              </button>
+              <button
+                className="game-launch-button"
+                type="button"
+                disabled={launching}
+                onClick={confirmLaunch}
+              >
+                {launching ? <LoaderCircle size={14} className="spin" /> : <Play size={13} fill="currentColor" />}
+                {launching ? "SENDING..." : "CONFIRM LAUNCH"}
+              </button>
+            </div>
+          </section>
         </div>
       )}
     </section>

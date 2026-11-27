@@ -18,6 +18,12 @@ pub struct SteamGame {
     pub install_dir: Option<String>,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SteamLaunchResult {
+    pub process_id: u32,
+}
+
 #[derive(Debug, PartialEq)]
 enum VdfToken {
     Value(String),
@@ -35,6 +41,52 @@ pub fn scan_steam_library() -> Result<SteamScanResult, String> {
     {
         Err("Steam library scanning is currently supported on Linux only.".to_string())
     }
+}
+
+pub fn launch_steam_game(input: &str) -> Result<SteamLaunchResult, String> {
+    #[cfg(target_os = "linux")]
+    {
+        let app_id = validate_app_id(input)?;
+        let scan = scan_steam_library()?;
+        ensure_installed_game(&scan, &app_id)?;
+
+        let uri = format!("steam://rungameid/{app_id}");
+        let process = std::process::Command::new("xdg-open")
+            .arg(uri)
+            .spawn()
+            .map_err(|error| {
+                format!("Could not ask the desktop to open Steam for app {app_id}: {error}")
+            })?;
+
+        Ok(SteamLaunchResult {
+            process_id: process.id(),
+        })
+    }
+
+    #[cfg(not(target_os = "linux"))]
+    {
+        let _ = input;
+        Err("Steam game launching is currently supported on Linux only.".to_string())
+    }
+}
+
+fn ensure_installed_game(scan: &SteamScanResult, app_id: &str) -> Result<(), String> {
+    if scan.games.iter().any(|game| game.app_id == app_id) {
+        Ok(())
+    } else {
+        Err("This game is not currently listed as installed in a Steam library.".to_string())
+    }
+}
+
+fn validate_app_id(input: &str) -> Result<String, String> {
+    let app_id = input
+        .trim()
+        .parse::<u32>()
+        .map_err(|_| "Steam app ID must be a positive numeric ID.".to_string())?;
+    if app_id == 0 {
+        return Err("Steam app ID must be a positive numeric ID.".to_string());
+    }
+    Ok(app_id.to_string())
 }
 
 #[cfg(target_os = "linux")]
@@ -210,6 +262,16 @@ fn scan_steam_home(home: &std::path::Path) -> Result<SteamScanResult, String> {
                     path.display()
                 ));
                 continue;
+            };
+            let app_id = match validate_app_id(&app_id) {
+                Ok(app_id) => app_id,
+                Err(_) => {
+                    issues.push(format!(
+                        "Steam app manifest '{}' has an invalid app ID.",
+                        path.display()
+                    ));
+                    continue;
+                }
             };
             let Some(name) = first_value_at_depth(&tokens, "name", 1) else {
                 issues.push(format!(
@@ -505,6 +567,17 @@ mod tests {
         assert_eq!(scan.games.len(), 2);
         assert_eq!(scan.games[0].name, "Alpha");
         assert_eq!(scan.games[1].name, "Beta");
+        assert!(ensure_installed_game(&scan, "100").is_ok());
+        assert!(ensure_installed_game(&scan, "200").is_err());
         assert!(scan.issues.is_empty());
+    }
+
+    #[test]
+    fn validates_steam_app_ids_before_building_a_launch_request() {
+        assert_eq!(validate_app_id("730").unwrap(), "730");
+        assert_eq!(validate_app_id(" 730 ").unwrap(), "730");
+        assert!(validate_app_id("0").is_err());
+        assert!(validate_app_id("730;echo unsafe").is_err());
+        assert!(validate_app_id("999999999999").is_err());
     }
 }
