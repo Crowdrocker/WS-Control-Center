@@ -172,6 +172,46 @@ button { color: inherit; }
 .module-info-card { padding: 16px; border: 1px solid var(--line); border-radius: 5px; background: rgba(16,22,29,.7); }
 .info-value { margin-top: 9px; color: #e0e8eb; font: 14px var(--display); }
 .module-info-card p { margin: 7px 0 0; color: #82919b; font-size: 10px; line-height: 1.6; }
+.steam-browser { overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: rgba(15, 21, 28, .9); }
+.steam-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 18px; padding: 18px 20px; border-bottom: 1px solid var(--line); }
+.steam-toolbar h2 { margin: 7px 0 5px; color: #e4ebee; font: 500 17px var(--display); }
+.steam-toolbar p { margin: 0; color: #85949c; font-size: 10px; line-height: 1.55; }
+.scan-button { display: flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 8px; min-height: 36px; padding: 0 12px; border: 1px solid rgba(255,154,76,.38); border-radius: 4px; background: rgba(255,154,76,.08); color: #ffc08e; font: 8px var(--mono); letter-spacing: .06em; cursor: pointer; transition: .18s ease; }
+.scan-button:hover:not(:disabled) { border-color: rgba(255,154,76,.7); background: rgba(255,154,76,.15); }
+.scan-button:disabled { opacity: .48; cursor: not-allowed; }
+.steam-notice, .steam-error { display: flex; align-items: flex-start; gap: 9px; margin: 14px 16px; padding: 11px 12px; border: 1px solid rgba(255,154,76,.19); border-radius: 4px; background: rgba(255,154,76,.045); color: #c99a72; font-size: 10px; line-height: 1.6; }
+.steam-notice svg, .steam-error svg { flex: 0 0 auto; margin-top: 1px; color: var(--orange); }
+.steam-notice code { padding: 2px 4px; border-radius: 2px; background: rgba(0,0,0,.24); color: #e6b98f; font: 9px var(--mono); }
+.steam-error { border-color: rgba(255,96,96,.2); background: rgba(255,96,96,.04); color: #e49a9a; }
+.steam-results { padding: 0 15px 15px; }
+.steam-results-bar { display: flex; min-height: 54px; align-items: center; gap: 17px; }
+.steam-detection { display: flex; align-items: center; gap: 7px; color: #bd8e6a; font: 8px var(--mono); letter-spacing: .06em; white-space: nowrap; }
+.steam-detection > span { width: 6px; height: 6px; border-radius: 50%; background: var(--orange); box-shadow: 0 0 7px rgba(255,154,76,.4); }
+.steam-detection.detected { color: #76c9bd; }
+.steam-detection.detected > span { background: #64d9bb; box-shadow: 0 0 7px rgba(100,217,187,.5); }
+.steam-result-count { display: flex; align-items: center; gap: 5px; color: #788791; font: 8px var(--mono); letter-spacing: .05em; white-space: nowrap; }
+.steam-result-count strong { color: #d3dfe4; font-weight: 400; }
+.steam-result-count i { width: 1px; height: 13px; margin: 0 5px; background: var(--line); }
+.game-filter { display: flex; align-items: center; gap: 7px; width: min(220px, 40%); margin-left: auto; color: #74838e; }
+.game-filter input { width: 100%; padding: 7px 0; border: 0; outline: 0; background: transparent; color: #dbe5e9; font-size: 10px; }
+.game-filter input::placeholder { color: #66757f; }
+.steam-game-list { display: grid; max-height: 390px; grid-template-columns: repeat(auto-fill, minmax(min(100%, 290px), 1fr)); gap: 8px; overflow-y: auto; padding: 1px 2px 2px 0; }
+.steam-game-card { display: flex; min-width: 0; align-items: center; gap: 11px; padding: 11px; border: 1px solid rgba(167,193,212,.09); border-radius: 4px; background: rgba(255,255,255,.018); }
+.steam-game-icon { display: grid; width: 35px; height: 35px; flex: 0 0 35px; place-items: center; border: 1px solid rgba(255,154,76,.2); border-radius: 4px; background: rgba(255,154,76,.055); color: var(--orange); }
+.steam-game-details { min-width: 0; flex: 1; }
+.steam-game-details h3 { overflow: hidden; margin: 0 0 4px; color: #e1e9ed; font: 500 11px var(--display); text-overflow: ellipsis; white-space: nowrap; }
+.steam-game-details span, .steam-game-details small { display: block; overflow: hidden; color: #83929b; font: 7px var(--mono); letter-spacing: .03em; text-overflow: ellipsis; white-space: nowrap; }
+.steam-game-details small { margin-top: 4px; color: #64737d; font-size: 7px; }
+.installed-tag { align-self: flex-start; padding: 4px 5px; border: 1px solid rgba(100,217,187,.15); border-radius: 2px; color: #78baaa; font: 6px var(--mono); letter-spacing: .04em; white-space: nowrap; }
+.game-empty { display: flex; min-height: 132px; align-items: center; justify-content: center; gap: 12px; border: 1px dashed rgba(167,193,212,.12); border-radius: 4px; color: #75848e; }
+.game-empty > svg { color: #758c94; }
+.game-empty div { display: grid; gap: 5px; }
+.game-empty strong { color: #c5d0d5; font: 500 11px var(--display); }
+.game-empty span { color: #82909a; font-size: 9px; }
+.steam-issues { margin-top: 12px; border-top: 1px solid var(--line); color: #cb9a72; font: 8px var(--mono); }
+.steam-issues summary { display: flex; align-items: center; gap: 7px; padding: 11px 1px 4px; cursor: pointer; list-style: none; }
+.steam-issues summary::-webkit-details-marker { display: none; }
+.steam-issues ul { display: grid; gap: 6px; margin: 8px 0 1px; padding-left: 22px; color: #9c8b7c; font-size: 8px; line-height: 1.5; }
 .back-button { display: flex; align-items: center; gap: 7px; margin-top: 19px; padding: 0; border: 0; background: transparent; color: #94a1a8; font: 8px var(--mono); letter-spacing: .08em; cursor: pointer; }
 .back-button svg { color: var(--cyan); transform: rotate(180deg); }
 .back-button:hover { color: #e0e9ed; }
@@ -179,6 +219,8 @@ button { color: inherit; }
 @keyframes rotate { to { transform: translate(-50%,-50%) rotate(360deg); } }
 @keyframes blink { 50% { opacity: 0; } }
 @keyframes enter { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+@keyframes spin { to { transform: rotate(360deg); } }
+.spin { animation: spin 1s linear infinite; }
 
 @media (min-width: 1500px) { .content-scroll { padding-right: 56px; padding-left: 56px; } }
 @media (max-width: 1150px) {
@@ -188,6 +230,8 @@ button { color: inherit; }
   .module-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .hero-content { width: 63%; }
   .strip-item { margin-left: 12px; }
+  .steam-results-bar { flex-wrap: wrap; gap: 11px; padding: 10px 0; }
+  .game-filter { width: 100%; margin-left: 0; border-top: 1px solid var(--line); }
 }
 @media (max-width: 900px) {
   body { min-width: 620px; }

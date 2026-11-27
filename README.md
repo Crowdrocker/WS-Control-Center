@@ -15,4 +15,6 @@ Create a production frontend build with `npm run build`, or package the desktop 
 
 ## Current scope
 
-The interface includes placeholder sections for Mod Organizer 2 / Proton, Steam and non-Steam games, app launching, Ollama voice control, GitHub dotfile sync, system tools, and OBS Studio. These are not connected to system services yet; the app currently makes no system changes and does not probe local applications or devices.
+The Steam library module can scan standard Linux Steam locations and their configured libraries when requested. It reads installed app manifests only; it does not launch games or modify files. The other sections are UI placeholders and are not connected to system services.
+
+Run the focused Rust parser tests with `cargo test --manifest-path src-tauri/Cargo.toml`.
