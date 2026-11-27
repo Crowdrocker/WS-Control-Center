@@ -1,6 +1,7 @@
 mod dotfiles;
 mod launcher;
 mod mo2;
+mod obs;
 mod ollama;
 mod steam;
 
@@ -30,6 +31,13 @@ async fn chat_with_ollama(
     messages: Vec<ollama::ChatMessage>,
 ) -> Result<String, String> {
     ollama::chat(&model, &messages).await
+}
+
+#[tauri::command]
+async fn read_obs_status(port: u16, password: Option<String>) -> Result<obs::ObsStatus, String> {
+    tauri::async_runtime::spawn_blocking(move || obs::read_status(port, password.as_deref()))
+        .await
+        .map_err(|error| format!("OBS status task failed: {error}"))?
 }
 
 #[tauri::command]
@@ -117,6 +125,7 @@ pub fn run() {
             check_mo2_environment,
             list_ollama_models,
             chat_with_ollama,
+            read_obs_status,
             get_dotfile_settings,
             save_dotfile_repository,
             add_dotfile_to_backup,

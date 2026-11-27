@@ -25,6 +25,8 @@ The Ollama assistant connects on request to the local Ollama API at `127.0.0.1:1
 
 The dotfile module backs up only individually selected regular files inside the user's home directory (8 MB per file, 24 MB total). It requires the GitHub CLI to be installed and authenticated, previews the destination before writing, and creates a single commit under `dotfiles/` in an existing repository. Public repositories require an additional explicit confirmation. File contents are not scanned for secrets.
 
-The remaining modules are UI placeholders and are not connected to system services.
+The OBS module connects to the local OBS WebSocket server (port 4455 by default) and reads the OBS version and scene list. An optional WebSocket password is held in memory only. This module does not switch scenes or control recording/streaming.
+
+The System Tools module remains a UI placeholder and is not connected to system services.
 
 Run the focused Rust tests with `cargo test --manifest-path src-tauri/Cargo.toml`.

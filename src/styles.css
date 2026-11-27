@@ -342,6 +342,35 @@ button { color: inherit; }
 .dotfile-confirmation.public-warning input { accent-color: var(--orange); }
 .dotfile-backup-button { margin-top: 13px; border-color: rgba(255,154,76,.3); background: rgba(255,154,76,.07); color: #ffc08e; }
 .dotfile-backup-button:hover:not(:disabled) { border-color: rgba(255,154,76,.65); background: rgba(255,154,76,.14); }
+.obs-workspace { display: grid; gap: 12px; }
+.obs-connect-panel, .obs-status-panel { overflow: hidden; padding: 16px 17px; border: 1px solid var(--line); border-radius: 6px; background: rgba(15, 21, 28, .9); }
+.obs-connect-panel { padding: 17px 19px; }
+.obs-connect-form { display: grid; grid-template-columns: minmax(110px, .55fr) minmax(190px, 1fr) auto; align-items: end; gap: 10px; margin-top: 15px; }
+.obs-connect-form label { display: grid; min-width: 0; gap: 6px; color: #85949c; font: 8px var(--mono); letter-spacing: .06em; }
+.obs-connect-form label small { color: #697983; font-size: 7px; }
+.obs-connect-form input { width: 100%; min-width: 0; height: 35px; padding: 0 10px; border: 1px solid rgba(167,193,212,.13); border-radius: 4px; outline: 0; background: rgba(6,10,14,.55); color: #e3eaed; font: 10px var(--mono); }
+.obs-connect-form input:focus { border-color: rgba(56,216,231,.42); box-shadow: 0 0 0 2px rgba(56,216,231,.07); }
+.obs-connect-form input::placeholder { color: #5f6e77; }
+.obs-connect-form input:disabled { opacity: .5; }
+.obs-connect-button { display: flex; flex: 0 0 auto; align-items: center; justify-content: center; gap: 7px; min-height: 35px; padding: 0 11px; border: 1px solid rgba(56,216,231,.3); border-radius: 4px; background: rgba(56,216,231,.065); color: #a7e8eb; font: 8px var(--mono); letter-spacing: .04em; cursor: pointer; transition: .18s ease; white-space: nowrap; }
+.obs-connect-button:hover:not(:disabled) { border-color: rgba(56,216,231,.64); background: rgba(56,216,231,.14); }
+.obs-connect-button:disabled { opacity: .46; cursor: not-allowed; }
+.obs-safety-note { display: flex; align-items: flex-start; gap: 7px; margin: 12px 0 0; color: #81c9ba; font: 8px/1.55 var(--mono); }
+.obs-safety-note svg { flex: 0 0 auto; margin-top: 1px; }
+.obs-status-panel .launcher-list-heading { margin-bottom: 12px; }
+.obs-version-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.obs-version-grid > div { display: grid; min-width: 0; gap: 6px; padding: 10px; border: 1px solid rgba(167,193,212,.09); border-radius: 4px; background: rgba(255,255,255,.018); }
+.obs-version-grid span { color: #788791; font: 7px var(--mono); letter-spacing: .05em; }
+.obs-version-grid strong { overflow: hidden; color: #cbd6da; font: 9px var(--mono); font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.obs-scene-heading { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin: 16px 0 9px; }
+.obs-scene-heading h3 { margin: 6px 0 0; color: #a7e8eb; font: 500 15px var(--display); }
+.obs-scene-list { display: grid; gap: 6px; }
+.obs-scene-item { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 9px 10px; border: 1px solid rgba(167,193,212,.08); border-radius: 4px; background: rgba(255,255,255,.015); }
+.obs-scene-item > span { flex: 0 0 20px; color: #687983; font: 7px var(--mono); }
+.obs-scene-item strong { min-width: 0; flex: 1; overflow: hidden; color: #aebcc2; font: 9px var(--mono); font-weight: 400; text-overflow: ellipsis; white-space: nowrap; }
+.obs-scene-item small { color: #83cbbb; font: 7px var(--mono); letter-spacing: .05em; }
+.obs-scene-item.active { border-color: rgba(56,216,231,.24); background: rgba(56,216,231,.045); }
+.obs-scene-item.active strong { color: #d7e5e8; }
 .launcher-workspace { display: grid; gap: 13px; }
 .launcher-add-panel, .launcher-list-panel { overflow: hidden; border: 1px solid var(--line); border-radius: 6px; background: rgba(15, 21, 28, .9); }
 .launcher-add-panel { padding: 17px 19px 18px; }
@@ -411,6 +440,8 @@ button { color: inherit; }
   .ollama-toolbar { align-items: flex-start; flex-direction: column; }
   .ollama-model-select { width: 100%; }
   .dotfile-repository-form, .dotfile-add-form { grid-template-columns: minmax(0, 1fr); }
+  .obs-connect-form { grid-template-columns: minmax(0, 1fr); }
+  .obs-version-grid { grid-template-columns: minmax(0, 1fr); }
 }
 @media (max-width: 900px) {
   body { min-width: 620px; }
